@@ -27,7 +27,8 @@
 ;;; Commentary:
 ;;
 ;; `test-case-mode' is a minor mode for running unit tests.  It is extensible
-;; and currently comes with back-ends for JUnit, CxxTest, CppUnit and Ruby.
+;; and currently comes with back-ends for JUnit, CxxTest, CppUnit, Python
+;; and Ruby.
 ;;
 ;; The back-ends probably need some more path options to work correctly.
 ;; Please let me know, as I'm not an expert on all of them.
@@ -76,7 +77,7 @@
 
 (defcustom test-case-backends
   '(test-case-junit-backend test-case-ruby-backend test-case-cxxtest-backend
-    test-case-cppunit-backend)
+    test-case-cppunit-backend test-case-python-backend)
   "*Test case backends.
 Each function in this list is called with a command, which is one of these:
 
@@ -1167,6 +1168,48 @@ configured correctly.  The classpath is determined by
     ('save t)
     ('failure-pattern test-case-ruby-failure-pattern)
     ('font-lock-keywords test-case-ruby-font-lock-keywords)))
+
+;; pyunit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom test-case-python-executable (executable-find "python")
+  "The Python executable used to run Python tests."
+  :group 'test-case
+  :type 'file)
+
+(defcustom test-case-python-arguments ""
+  "The command line arguments used to run Python tests."
+  :group 'test-case
+  :type 'string)
+
+(defvar test-case-python-font-lock-keywords
+  (eval-when-compile
+    `((,(concat
+         "\\_<assert" (regexp-opt '("AlmostEqual" "Equal" "False" "Raises"
+                                    "NotAlmostEqual" "NotEqual" "True" "_") t)
+         "\\|fail" (regexp-opt '("" "If" "IfAlmostEqual" "IfEqual" "Unless"
+                                    "UnlessAlmostEqual" "UnlessEqual"
+                                    "UnlessRaises" "ureException"))
+         "\\_>")
+       (0 'test-case-assertion prepend)))))
+
+(defun test-case-python-failure-pattern ()
+  (let ((file (regexp-quote buffer-file-name)))
+    (list (concat "  File \"\\(\\(" file "\\)\", line \\([0-9]+\\)\\).*\n"
+                  "\\(?:  .*\n\\)*"
+                  "\\([^ ].*\\)\n\n"
+                  )
+          2 3 nil nil 4)))
+
+(defun test-case-python-backend (command)
+  "Python Test::Unit back-end for `test-case-mode'."
+  (case command
+    ('name "PyUnit")
+    ('supported (and (derived-mode-p 'python-mode)
+                     (test-case-grep "\\_<import\s+unittest\\_>")))
+    ('command (concat test-case-python-executable " " buffer-file-name))
+    ('save t)
+    ('failure-pattern (test-case-python-failure-pattern))
+    ('font-lock-keywords test-case-python-font-lock-keywords)))
 
 ;; cxxtest ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
