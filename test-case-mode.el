@@ -143,6 +143,12 @@ Each function is called with two arguments, the old and the new value of
   :type '(choice (const :tag "Keep running" nil)
                  (const :tag "Abort on first failure" t)))
 
+(defcustom test-case-display-results-on-failure t
+  "*If enabled, display the result buffer when a failure occurs."
+  :group 'test-case
+  :type '(choice (const :tag "Don't Show Results" nil)
+                 (const :tag "Show Results" nil)))
+
 (defcustom test-case-color-buffer-id t
   "*Color Buffer Identification?"
   :group 'test-case
@@ -680,6 +686,9 @@ and `test-case-mode-line-info-position'."
 
       (when failure
         (setq next-error-last-buffer result-buffer)
+        (or (not test-case-display-results-on-failure)
+            (eq test-case-global-state 'running-failure)
+            (display-buffer result-buffer))
         (when (or next more)
           (unless (eq test-case-global-state 'running-failure)
             (test-case-set-global-state 'running-failure)
