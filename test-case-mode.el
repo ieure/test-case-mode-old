@@ -3,7 +3,7 @@
 ;; Copyright (C) 2009 Nikolaj Schumacher
 ;;
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
-;; Version: 
+;; Version: 0.1
 ;; Keywords: tools
 ;; URL: http://nschum.de/src/emacs/test-case-mode/
 ;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x
@@ -59,6 +59,7 @@
 ;;
 ;;; Change Log:
 ;;
+;; 2009-03-30 (0.1)
 ;;    Initial release.
 ;;
 ;;; Code:
