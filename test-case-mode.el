@@ -37,6 +37,7 @@
 ;; (add-to-list 'load-path "/path/to/test-case-mode")
 ;; (autoload 'test-case-mode "test-case-mode" nil t)
 ;; (autoload 'enable-test-case-mode-if-test "test-case-mode")
+;; (autoload 'test-case-find-all-tests "test-case-mode" nil t)
 ;; (autoload 'test-case-compilation-finish-run-all "test-case-mode")
 ;;
 ;; To enable it automatically when opening test files:
@@ -500,6 +501,28 @@ and `test-case-mode-line-info-position'."
   (ignore-errors (test-case-mode 1)))
 
 ;;;###autoload(add-hook 'find-file-hook 'enable-test-case-mode-if-test)
+
+;;;###autoload
+(defun test-case-find-all-tests (directory)
+  "Find all test cases in DIRECTORY."
+  (interactive "DDirectory: ")
+  (dolist (file (directory-files directory t "^[^.]" t))
+    (if (file-directory-p file)
+        (test-case-find-all-tests file)
+      ;; Detect back-end for file.
+      (let ((file-mode (assoc-default file auto-mode-alist 'string-match)))
+        (and file-mode
+             (with-temp-buffer
+               (insert-file-contents file)
+               ;; Don't actually invoke major mode (because of the hooks).
+               (let ((major-mode file-mode)
+                     (buffer-file-name file))
+                 (test-case-detect-backend)))
+             (find-file-noselect file))))))
+
+(defun test-case-kill-all-test-buffers ()
+  (interactive)
+  (mapc 'kill-buffer (test-case-buffer-list)))
 
 ;;; menu ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
