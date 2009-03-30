@@ -480,6 +480,10 @@ When a run has finished, the results appear in a buffer named \"*Test
 Result*\".  Clicking on the files will take you to the failure location,
 as will `next-error' and `previous-error'.
 
+Failures are also highlighted in the buffer.  Hovering the mouse above
+them, or enabling `test-case-echo-failure-mode' shows the associated
+failure message.
+
 The testing states are indicated visually.  The buffer name is colored
 according to the result and a dot in the mode-line represents the global
 state.  This behavior is customizable through `test-case-color-buffer-id'
@@ -860,7 +864,8 @@ Install this the following way:
                test-case-error-overlays))
     (push (make-overlay beg end) test-case-error-overlays)
     (overlay-put (car test-case-error-overlays) 'face 'test-case-failure)
-    (overlay-put (car test-case-error-overlays) 'help-echo msg)))
+    (overlay-put (car test-case-error-overlays) 'help-echo msg)
+    (overlay-put (car test-case-error-overlays) 'test-case-message msg)))
 
 (defun test-case-remove-failure-overlays (buffer)
   "Remove all overlays added by `test-case-insert-failure-overlay' in BUFFER."
@@ -962,6 +967,26 @@ Install this the following way:
   (interactive "e")
   (with-current-buffer (window-buffer (posn-window (event-end event)))
     (test-case-follow-link (posn-point (event-end event)))))
+
+(defun test-case-failure-message-at-point ()
+  (get-char-property (point) 'test-case-message))
+
+;;; echo failure messages ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar test-case-echo-failure-mode-map (make-sparse-keymap))
+
+(defun test-case-echo-failure-at-point ()
+  (let ((message-log-max nil)
+        (failure (test-case-failure-message-at-point)))
+    (when failure
+      (message "%s" failure))))
+
+(define-minor-mode test-case-echo-failure-mode ()
+  nil " echo-fail" test-case-echo-failure-mode-map
+  "Minor mode that displays the message of the failure at point, if any."
+  (if test-case-echo-failure-mode
+      (add-hook 'post-command-hook 'test-case-echo-failure-at-point nil t)
+    (remove-hook 'post-command-hook 'test-case-echo-failure-at-point t)))
 
 ;;; next-error ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
