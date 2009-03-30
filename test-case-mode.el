@@ -847,7 +847,7 @@ Install this the following way:
         (switch-to-buffer buffer)
       (message "No result buffer found"))))
 
-(defun test-case-insert-failure-overlay (beg end buffer)
+(defun test-case-insert-failure-overlay (beg end buffer msg)
   "Insert an overlay marking a failure between BEG and END in BUFFER."
   (with-current-buffer buffer
     (and (fboundp 'fringe-helper-insert-region)
@@ -859,14 +859,15 @@ Install this the following way:
                 'left-fringe 'test-case-fringe)
                test-case-error-overlays))
     (push (make-overlay beg end) test-case-error-overlays)
-    (overlay-put (car test-case-error-overlays) 'face 'test-case-failure)))
+    (overlay-put (car test-case-error-overlays) 'face 'test-case-failure)
+    (overlay-put (car test-case-error-overlays) 'help-echo msg)))
 
 (defun test-case-remove-failure-overlays (buffer)
   "Remove all overlays added by `test-case-insert-failure-overlay' in BUFFER."
   (with-current-buffer buffer
     (mapc 'delete-overlay test-case-error-overlays)))
 
-(defun test-case-result-add-markers (beg end find-file-p file line col)
+(defun test-case-result-add-markers (beg end find-file-p file line col msg)
   (let ((buffer (if find-file-p
                     (find-file-noselect file)
                   (find-buffer-visiting file)))
@@ -884,7 +885,7 @@ Install this the following way:
         (add-text-properties beg end
                              `(test-case-beg-marker ,beg-marker
                                test-case-end-marker ,end-marker))
-        (test-case-insert-failure-overlay beg-marker end-marker buffer)))))
+        (test-case-insert-failure-overlay beg-marker end-marker buffer msg)))))
 
 (defun test-case-result-supplement-markers (pos)
   (let* ((end (next-single-property-change pos 'test-case-failure))
@@ -892,7 +893,8 @@ Install this the following way:
     (test-case-result-add-markers beg end t
                                   (get-text-property pos 'test-case-file)
                                   (get-text-property pos 'test-case-line)
-                                  (get-text-property pos 'test-case-column))))
+                                  (get-text-property pos 'test-case-column)
+                                  (get-text-property pos 'test-case-message))))
 
 (defun test-case-propertize-message (file line col link msg)
   (and file
@@ -921,14 +923,16 @@ Install this the following way:
 
   (let ((file (match-string-no-properties file))
         (line (string-to-number (match-string-no-properties line)))
-        (col (when col (string-to-number (match-string-no-properties col)))))
+        (col (when col (string-to-number (match-string-no-properties col))))
+        (msg (when msg (match-string-no-properties msg))))
     (add-text-properties (match-beginning 0) (match-end 0)
                          `(test-case-failure ,(current-time) ;; unique
                            test-case-file ,file
                            test-case-line ,line
-                           test-case-column ,col))
+                           test-case-column ,col
+                           test-case-message ,msg))
     (test-case-result-add-markers (match-beginning 0) (match-end 0) nil
-                                  file line col)))
+                                  file line col msg)))
 
 (defun test-case-parse-result (result-buffer keywords &optional beg end)
   (with-current-buffer result-buffer
