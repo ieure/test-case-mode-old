@@ -132,6 +132,11 @@ Each function is called with two arguments, the old and the new value of
                  (integer)
                  (const :tag "Unlimited" t)))
 
+(defcustom test-case-priority-function 'test-case-failure-more-recent-p
+  "*Comparison function used to sort test-cases before running them."
+  :group 'test-case
+  :type 'function)
+
 (defcustom test-case-abort-on-first-failure nil
   "*Stop running test cases after the first failure occurs."
   :group 'test-case
@@ -362,6 +367,14 @@ This is either 'unknown, 'running, 'failure, 'success or 'success-modified")
   "The aggregated test states.
 This is either 'unknown, 'running, 'running-failure, 'failure or 'success.")
 
+(defvar test-case-most-recent-failure '(0 0 0)
+  "The last time this buffer's test failed.")
+(make-variable-buffer-local 'test-case-most-recent-failure)
+
+(defun test-case-failure-more-recent-p (buffer-a buffer-b)
+  (time-less-p (buffer-local-value 'test-case-most-recent-failure buffer-b)
+               (buffer-local-value 'test-case-most-recent-failure buffer-a)))
+
 (defun test-case-echo-state (state)
   (unless (eq state 'unknown)
     (message "Test %s" (case state
@@ -412,6 +425,9 @@ This assumes that no test is still running."
              ('running 'test-case-mode-line-undetermined)
              ('failure 'test-case-mode-line-failure)
              (otherwise 'mode-line-buffer-id))))
+
+        (when (eq state 'failure)
+          (setq test-case-most-recent-failure (current-time)))
 
         (test-case-menu-update)
 
@@ -726,6 +742,9 @@ and `test-case-mode-line-info-position'."
 Tests are run consecutively or concurrently according to
 `test-case-parallel-processes'."
   (test-case-abort)
+
+  (when test-case-priority-function
+    (setq buffers (sort (copy-sequence buffers) test-case-priority-function)))
 
   (dolist (buffer buffers)
     (when (test-case-call-backend 'save buffer)
