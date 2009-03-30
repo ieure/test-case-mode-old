@@ -27,7 +27,7 @@
 ;;; Commentary:
 ;;
 ;; `test-case-mode' is a minor mode for running unit tests.  It is extensible
-;; and currently comes with back-ends for JUnit, CxxTest and Ruby.
+;; and currently comes with back-ends for JUnit, CxxTest, CppUnit and Ruby.
 ;;
 ;; The back-ends probably need some more path options to work correctly.
 ;; Please let me know, as I'm not an expert on all of them.
@@ -75,7 +75,8 @@
   :group 'tools)
 
 (defcustom test-case-backends
-  '(test-case-junit-backend test-case-ruby-backend test-case-cxxtest-backend)
+  '(test-case-junit-backend test-case-ruby-backend test-case-cxxtest-backend
+    test-case-cppunit-backend)
   "*Test case backends.
 Each function in this list is called with a command, which is one of these:
 
@@ -1225,6 +1226,63 @@ customize `test-case-cxxtest-executable-name-func'"
     ('command (test-case-cxxtest-command))
     ('failure-pattern (test-case-cxxtest-failure-pattern))
     ('font-lock-keywords test-case-cxxtest-font-lock-keywords)))
+
+;; cppunit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom test-case-cppunit-executable-name-func 'file-name-sans-extension
+  "A function that returns the executable name for a CppUnit test."
+  :group 'test-case
+  :type 'function)
+
+(defun test-case-cppunit-p ()
+  "Test if the current buffer is a CppUnit test."
+  (and (derived-mode-p 'c++-mode)
+       ;; header included
+       (test-case-grep "#include\s+\\([<\"]\\)cppunit[/\\]TestCase.h[>\"]")
+       ;; class inherited (depending on used namespace)
+       (or (test-case-c++-inherits "CppUnit::TestCase")
+           (and (test-case-c++-inherits "TestCase")
+                (or (test-case-grep (concat "using\s+namespace\s+CppUnit;"))
+                    (test-case-grep (concat "using\s+CppUnit.TestCase;")))))))
+
+(defun test-case-cppunit-command ()
+  (let ((executable (funcall test-case-cppunit-executable-name-func
+                             buffer-file-name)))
+    (unless (file-exists-p executable)
+      (error "Executable %s not found" executable))
+    (when (file-newer-than-file-p buffer-file-name executable)
+      (error "Test case executable %s out of date" executable))
+    executable))
+
+(defvar test-case-cppunit-font-lock-keywords
+  (eval-when-compile
+    `((,(concat
+         "\\_<CPPUNIT_"
+         (regexp-opt '("ASSERT" "ASSERT_MESSAGE" "FAIL" "ASSERT_EQUAL"
+                       "ASSERT_EQUAL_MESSAGE" "ASSERT_DOUBLES_EQUAL"
+                       "ASSERT_THROW" "ASSERT_NO_THROW" "ASSERT_ASSERTION_FAIL"
+                       "ASSERT_ASSERTION_PASS"))
+         "\\_>")
+       (0 'test-case-assertion prepend)))))
+
+(defun test-case-cppunit-failure-pattern ()
+  (let ((file (regexp-quote (file-name-nondirectory (buffer-file-name)))))
+    (list (concat "^[0-9]+) test:.*\\(line: \\([0-9]+\\) \\(.+\\)\\)\n"
+                  "\\(\\(.+\n\\)+\\)\n\n")
+          2 3 nil 1 4)))
+
+(defun test-case-cppunit-backend (command)
+  "CxxTest back-end for `test-case-mode'
+Since these tests can't be dynamically loaded by the runner, each test has
+to be compiled into its own executable.  The executable should have the
+same name as the test, but without the extension.  If it doesn't,
+customize `test-case-cppunit-executable-name-func'"
+  (case command
+    ('name "CppUnit")
+    ('supported (test-case-cppunit-p))
+    ('command (test-case-cppunit-command))
+    ('failure-pattern (test-case-cppunit-failure-pattern))
+    ('font-lock-keywords test-case-cppunit-font-lock-keywords)))
 
 (provide 'test-case-mode)
 ;;; test-case-mode.el ends here
