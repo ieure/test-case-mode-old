@@ -69,7 +69,7 @@
 (require 'fringe-helper nil t)
 
 (dolist (err '("^test-case-mode not enabled$" "^Test not recognized$"
-               "^Moved back before first failure$" "^Moved past last failure$"
+               "^Moved \\(back before fir\\|past la\\)st failure$"
                "^Test result buffer killed$"))
   (add-to-list 'debug-ignored-errors err))
 
