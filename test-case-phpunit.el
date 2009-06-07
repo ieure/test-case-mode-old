@@ -84,3 +84,4 @@
 
 (add-to-list 'test-case-backends 'test-case-phpunit-backend)
 
+(provide 'test-case-phpunit)
