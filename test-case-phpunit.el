@@ -77,7 +77,7 @@
     ('command (format "%s %s %s %s" test-case-phpunit-executable
                       test-case-phpunit-arguments
                       (test-case-phpunit-find-test-class)
-                      buffer-file-name))
+                      (test-case-localname buffer-file-name)))
     ('save t)
     ('failure-pattern test-case-phpunit-failure-pattern)
     ('font-lock-keywords test-case-phpunit-font-lock-keywords)))

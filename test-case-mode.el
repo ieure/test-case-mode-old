@@ -720,6 +720,11 @@ and `test-case-mode-line-info-position'."
           (test-case-echo-state
            (test-case-calculate-global-state test-case-current-run)))))))
 
+(defun test-case-localname (path)
+  (if (tramp-tramp-file-p path)
+      (with-parsed-tramp-file-name path remote remote-localname)
+      path))
+
 (defun test-case-run-internal (test-buffer result-buffer &optional out-buffer)
   (let ((inhibit-read-only t)
         (default-directory (file-name-directory (buffer-file-name test-buffer)))
@@ -738,7 +743,7 @@ and `test-case-mode-line-info-position'."
       (error (insert (error-message-string err) "\n")
              (setq command "false"))))
 
-    (setq process (start-process "test-case-process" out-buffer
+    (setq process (start-file-process "test-case-process" out-buffer
                                  shell-file-name shell-command-switch command))
     (set-process-query-on-exit-flag process nil)
     (process-put process 'test-case-tick (buffer-modified-tick test-buffer))
@@ -1245,7 +1250,8 @@ configured correctly.  The classpath is determined by
     ('supported (and (derived-mode-p 'ruby-mode)
                      (test-case-grep "require\s+['\"]test/unit['\"]")))
     ('command (concat test-case-ruby-executable " "
-                      test-case-ruby-arguments " " buffer-file-name))
+                      test-case-ruby-arguments " " 
+                      (test-case-localname buffer-file-name)))
     ('save t)
     ('failure-pattern test-case-ruby-failure-pattern)
     ('font-lock-keywords test-case-ruby-font-lock-keywords)))
@@ -1287,7 +1293,8 @@ configured correctly.  The classpath is determined by
     ('name "PyUnit")
     ('supported (and (derived-mode-p 'python-mode)
                      (test-case-grep "\\_<import\s+unittest\\_>")))
-    ('command (concat test-case-python-executable " " buffer-file-name))
+    ('command (concat test-case-python-executable " " 
+                      (test-case-localname buffer-file-name)))
     ('save t)
     ('failure-pattern (test-case-python-failure-pattern))
     ('font-lock-keywords test-case-python-font-lock-keywords)))
@@ -1313,7 +1320,7 @@ configured correctly.  The classpath is determined by
 
 (defun test-case-cxxtest-command ()
   (let ((executable (funcall test-case-cxxtest-executable-name-func
-                             buffer-file-name)))
+                             (test-case-localname buffer-file-name))))
     (unless (file-exists-p executable)
       (error "Executable %s not found" executable))
     (when (file-newer-than-file-p buffer-file-name executable)
@@ -1371,7 +1378,7 @@ customize `test-case-cxxtest-executable-name-func'"
 
 (defun test-case-cppunit-command ()
   (let ((executable (funcall test-case-cppunit-executable-name-func
-                             buffer-file-name)))
+                             (test-case-localname buffer-file-name))))
     (unless (file-exists-p executable)
       (error "Executable %s not found" executable))
     (when (file-newer-than-file-p buffer-file-name executable)
