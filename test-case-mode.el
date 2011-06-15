@@ -896,7 +896,8 @@ Install this the following way:
       (save-match-data
         (with-current-buffer buffer
           (save-excursion
-            (goto-line line)
+            (goto-char (point-min))
+            (forward-line (1- line))
             (back-to-indentation)
             (setq beg-marker (copy-marker (point)))
             (end-of-line)
