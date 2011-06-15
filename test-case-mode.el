@@ -59,6 +59,8 @@
 ;;
 ;;; Change Log:
 ;;
+;;    Added support for ERT (Emacs Lisp Regression Testing).
+;;
 ;; 2009-03-30 (0.1)
 ;;    Initial release.
 ;;
@@ -79,7 +81,7 @@
 
 (defcustom test-case-backends
   '(test-case-junit-backend test-case-ruby-backend test-case-cxxtest-backend
-    test-case-cppunit-backend test-case-python-backend)
+    test-case-cppunit-backend test-case-python-backend test-case-ert-backend)
   "*Test case backends.
 Each function in this list is called with a command, which is one of these:
 
@@ -883,12 +885,13 @@ Install this the following way:
     (mapc 'delete-overlay test-case-error-overlays)))
 
 (defun test-case-result-add-markers (beg end find-file-p file line col msg)
-  (let ((buffer (if find-file-p
-                    (find-file-noselect file)
-                  (find-buffer-visiting file)))
+  (let ((buffer (when file
+                  (if find-file-p
+                      (find-file-noselect file)
+                    (find-buffer-visiting file))))
         (inhibit-read-only t)
         beg-marker end-marker)
-    (when buffer
+    (when (and buffer line)
       (save-match-data
         (with-current-buffer buffer
           (save-excursion
@@ -936,8 +939,8 @@ Install this the following way:
                                    mouse-face highlight
                                    follow-link t)))
 
-  (let ((file (match-string-no-properties file))
-        (line (string-to-number (match-string-no-properties line)))
+  (let ((file (when file (match-string-no-properties file)))
+        (line (when line (string-to-number (match-string-no-properties line))))
         (col (when col (string-to-number (match-string-no-properties col))))
         (msg (when msg (match-string-no-properties msg))))
     (add-text-properties (match-beginning 0) (match-end 0)
@@ -1407,6 +1410,39 @@ customize `test-case-cppunit-executable-name-func'"
     ('command (test-case-cppunit-command))
     ('failure-pattern (test-case-cppunit-failure-pattern))
     ('font-lock-keywords test-case-cppunit-font-lock-keywords)))
+
+;; ERT ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom test-case-erc-emacs-executable (car command-line-args)
+  "The Emacs executable used to run ERT tests."
+  :group 'test-case
+  :type 'file)
+
+(defun test-case-ert-p ()
+  (and (derived-mode-p 'emacs-lisp-mode)
+       (test-case-grep "([ \t]*ert-deftest")))
+
+(defun test-case-ert-command ()
+  (format "%s -batch -l ert.el -L %s -l %s -f ert-run-tests-batch-and-exit"
+          test-case-erc-emacs-executable
+          (file-name-directory buffer-file-name)
+          buffer-file-name))
+
+(defvar test-case-ert-font-lock-keywords
+  '(("(\\(\\_<should\\_>\\)" (1 'test-case-assertion prepend))))
+
+(defvar test-case-ert-failure-pattern
+  '("Test \\(.*\\) condition:\n\\(?:    .*\n\\)*"
+    nil nil nil nil 0))
+
+(defun test-case-ert-backend (command)
+  (case command
+    ('name "ERT")
+    ('supported (test-case-ert-p))
+    ('command (test-case-ert-command))
+    ('save t)
+    ('failure-pattern test-case-ert-failure-pattern)
+    ('font-lock-keywords test-case-ert-font-lock-keywords)))
 
 (provide 'test-case-mode)
 ;;; test-case-mode.el ends here
