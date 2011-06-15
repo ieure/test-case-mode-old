@@ -680,14 +680,15 @@ and `test-case-mode-line-info-position'."
                                     (process-get proc 'test-case-beg))
           (let ((beg (with-current-buffer result-buffer (point-max))))
             (test-case-copy-result out-buffer result-buffer)
-            (test-case-parse-result result-buffer keywords beg)))
-
-        (when (and failure test-case-abort-on-first-failure)
-          (test-case-abort t)
-          (setq more nil
-                next nil)))
+            (test-case-parse-result result-buffer keywords beg))))
 
       (when failure
+
+        (when test-case-abort-on-first-failure
+          (test-case-abort t)
+          (setq more nil
+                next nil))
+
         (setq next-error-last-buffer result-buffer)
         (or (not test-case-display-results-on-failure)
             (eq test-case-global-state 'running-failure)
