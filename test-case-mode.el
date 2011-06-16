@@ -649,8 +649,6 @@ and `test-case-mode-line-info-position'."
     (let ((out-buffer (process-buffer proc))
           (test-buffer (process-get proc 'test-case-buffer))
           (result-buffer (process-get proc 'test-case-result-buffer))
-          (keywords (process-get proc 'test-case-failure-pattern))
-          (beg (process-get proc 'test-case-beg))
           (failure-p (/= 0 (process-exit-status proc)))
           (next (pop test-case-current-run-left))
           (more (test-case-process-list))
@@ -668,7 +666,7 @@ and `test-case-mode-line-info-position'."
       (test-case--update-buffer-state proc failure-p test-buffer)
 
       ;; Update the results.
-      (test-case--parse-result beg keywords result-buffer out-buffer)
+      (test-case--parse-result proc result-buffer out-buffer)
 
       (when failure-p
 
@@ -705,16 +703,17 @@ and `test-case-mode-line-info-position'."
          'success-modified))
      test-buffer)))
 
-(defun test-case--parse-result (beg keywords result-buffer out-buffer)
+(defun test-case--parse-result (proc result-buffer out-buffer)
   (with-current-buffer result-buffer
     (save-excursion
-      (let ((inhibit-read-only t))
-        (if (eq out-buffer result-buffer)
-            (goto-char beg)
-          (goto-char (test-case-copy-result out-buffer result-buffer)))
-        (when keywords
-          (while (re-search-forward (car keywords) nil t)
-            (apply 'test-case-propertize-message (cdr keywords))))))))
+      (let ((keywords (process-get proc 'test-case-failure-pattern))
+            (inhibit-read-only t))
+          (if (eq out-buffer result-buffer)
+              (goto-char (process-get proc 'test-case-beg))
+            (goto-char (test-case-copy-result out-buffer result-buffer)))
+          (when keywords
+            (while (re-search-forward (car keywords) nil t)
+              (apply 'test-case-propertize-message (cdr keywords))))))))
 
 (defun test-case--skip-dead-process-buffers (next)
   (while (and next
