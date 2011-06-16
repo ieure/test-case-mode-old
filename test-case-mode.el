@@ -101,8 +101,8 @@ current buffer.  They should be suitable for passing to
 'failure-pattern: The function should return a list.  The first element
 must be the regular expression that matches the failure description as
 returned by the command.  The next elements should be the sub-expression
-numbers that match file name, line, column, name plus line (a clickable link)
-and error message. Each of these can be nil."
+numbers that match file name, line, column, name plus line (a clickable link),
+error message, and test-name. Each of these can be nil."
   :group 'test-case
   :type '(repeat function))
 
@@ -939,7 +939,8 @@ Install this the following way:
     (test-case-result-add-markers beg end t
                                   (get-text-property pos 'test-case-props))))
 
-(defun test-case-propertize-message (file-name file line col link msg)
+(defun test-case-propertize-message (file-name
+                                     &optional file line col link msg test)
 
   (test-case--add-text-properties-for-match file '(face test-case-result-file))
   (test-case--add-text-properties-for-match line '(face test-case-result-line))
@@ -954,7 +955,8 @@ Install this the following way:
                                file-name)
                      :line (when line (string-to-number (match-string line)))
                      :column (when col (string-to-number (match-string col)))
-                     :message (when msg (match-string-no-properties msg)))))
+                     :message (when msg (match-string-no-properties msg))
+                     :test (when test (match-string-no-properties test)))))
     (test-case--add-text-properties-for-match 0 `(test-case-props ,props))
     (test-case-result-add-markers (match-beginning 0) (match-end 0) nil props)))
 
@@ -1433,7 +1435,7 @@ customize `test-case-cppunit-executable-name-func'"
 
 (defvar test-case-ert-failure-pattern
   '("Test \\(.*\\) condition:\n\\(?:    .*\n\\)*"
-    nil nil nil nil 0))
+    nil nil nil nil 0 1))
 
 (defun test-case-ert-backend (command)
   (case command
