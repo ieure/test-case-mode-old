@@ -707,13 +707,15 @@ and `test-case-mode-line-info-position'."
   (with-current-buffer result-buffer
     (save-excursion
       (let ((keywords (process-get proc 'test-case-failure-pattern))
+            (file-name (process-get proc 'test-case-file))
             (inhibit-read-only t))
           (if (eq out-buffer result-buffer)
               (goto-char (process-get proc 'test-case-beg))
             (goto-char (test-case-copy-result out-buffer result-buffer)))
           (when keywords
             (while (re-search-forward (car keywords) nil t)
-              (apply 'test-case-propertize-message (cdr keywords))))))))
+              (apply 'test-case-propertize-message
+                     file-name (cdr keywords))))))))
 
 (defun test-case--skip-dead-process-buffers (next)
   (while (and next
@@ -742,9 +744,10 @@ and `test-case-mode-line-info-position'."
    (test-case-calculate-global-state test-case-current-run)))
 
 (defun test-case-run-internal (test-buffer result-buffer &optional out-buffer)
-  (let ((inhibit-read-only t)
-        (default-directory (file-name-directory (buffer-file-name test-buffer)))
-        command beg process)
+  (let* ((file-name (buffer-file-name test-buffer))
+         (default-directory (file-name-directory file-name))
+         (inhibit-read-only t)
+         command beg process)
 
     (unless out-buffer (setq out-buffer result-buffer))
 
@@ -764,6 +767,7 @@ and `test-case-mode-line-info-position'."
     (set-process-query-on-exit-flag process nil)
     (process-put process 'test-case-tick (buffer-modified-tick test-buffer))
     (process-put process 'test-case-buffer test-buffer)
+    (process-put process 'test-case-file file-name)
     (process-put process 'test-case-result-buffer result-buffer)
     (process-put process 'test-case-failure-pattern
                  (test-case-call-backend 'failure-pattern test-buffer))
@@ -935,7 +939,7 @@ Install this the following way:
     (test-case-result-add-markers beg end t
                                   (get-text-property pos 'test-case-props))))
 
-(defun test-case-propertize-message (file line col link msg)
+(defun test-case-propertize-message (file-name file line col link msg)
 
   (test-case--add-text-properties-for-match file '(face test-case-result-file))
   (test-case--add-text-properties-for-match line '(face test-case-result-line))
@@ -946,7 +950,8 @@ Install this the following way:
      msg (append link-props '(face test-case-result-message))))
 
   (let ((props (list :failure (current-time)
-                     :file (when file (match-string-no-properties file))
+                     :file (or (when file (match-string-no-properties file))
+                               file-name)
                      :line (when line (string-to-number (match-string line)))
                      :column (when col (string-to-number (match-string col)))
                      :message (when msg (match-string-no-properties msg)))))
