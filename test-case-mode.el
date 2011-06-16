@@ -937,42 +937,32 @@ Install this the following way:
                                   (get-text-property pos 'test-case-message))))
 
 (defun test-case-propertize-message (file line col link msg)
-  (and file
-       (match-beginning file)
-       (add-text-properties (match-beginning file) (match-end file)
-                            '(face test-case-result-file)))
-  (and line
-       (match-beginning line)
-       (add-text-properties (match-beginning line) (match-end line)
-                            '(face test-case-result-line)))
-  (and col
-       (match-beginning col)
-       (add-text-properties (match-beginning col) (match-end col)
-                            '(face test-case-result-column)))
-  (and link
-       (match-beginning link)
-       (add-text-properties (match-beginning link) (match-end link)
-                            '(mouse-face highlight
-                              follow-link t)))
-  (and msg
-       (match-beginning msg)
-       (add-text-properties (match-beginning msg) (match-end msg)
-                            '(face test-case-result-message
-                                   mouse-face highlight
-                                   follow-link t)))
+
+  (test-case--add-text-properties-for-match file '(face test-case-result-file))
+  (test-case--add-text-properties-for-match line '(face test-case-result-line))
+  (test-case--add-text-properties-for-match col '(face test-case-result-column))
+  (test-case--add-text-properties-for-match
+   link '(mouse-face highlight follow-link t))
+  (test-case--add-text-properties-for-match
+   msg '(face test-case-result-message mouse-face highlight follow-link t))
 
   (let ((file (when file (match-string-no-properties file)))
         (line (when line (string-to-number (match-string-no-properties line))))
         (col (when col (string-to-number (match-string-no-properties col))))
         (msg (when msg (match-string-no-properties msg))))
-    (add-text-properties (match-beginning 0) (match-end 0)
-                         `(test-case-failure ,(current-time) ;; unique
-                           test-case-file ,file
-                           test-case-line ,line
-                           test-case-column ,col
-                           test-case-message ,msg))
+    (test-case--add-text-properties-for-match
+     0 `(test-case-failure ,(current-time) ;; unique
+         test-case-file ,file
+         test-case-line ,line
+         test-case-column ,col
+         test-case-message ,msg))
     (test-case-result-add-markers (match-beginning 0) (match-end 0) nil
                                   file line col msg)))
+
+(defun test-case--add-text-properties-for-match (match props)
+  (and match
+       (match-beginning match)
+       (add-text-properties (match-beginning match) (match-end match) props)))
 
 (defun test-case-follow-link (pos)
   "Follow the link at POS in an error buffer."
