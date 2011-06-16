@@ -665,9 +665,7 @@ and `test-case-mode-line-info-position'."
       (unless (buffer-live-p out-buffer)
         (error "Test result buffer killed"))
 
-      (with-current-buffer out-buffer
-        (insert-char ?= fill-column)
-        (newline))
+      (test-case--fill-line ?< out-buffer)
 
       (test-case--update-buffer-state proc failure-p test-buffer)
 
@@ -759,9 +757,8 @@ and `test-case-mode-line-info-position'."
     (unless out-buffer (setq out-buffer result-buffer))
 
     (with-current-buffer out-buffer
-      (goto-char (setq beg (point-max)))
-      (insert-char ?= fill-column)
-      (newline)
+      (setq beg (point-max))
+      (test-case--fill-line ?>)
       (condition-case err
           (insert (format "Test run: %s\n\n"
                           (setq command
@@ -784,6 +781,12 @@ and `test-case-mode-line-info-position'."
 
     (set-process-sentinel process 'test-case-process-sentinel)
     t))
+
+(defun test-case--fill-line (char &optional buffer)
+  (with-current-buffer (or buffer (current-buffer))
+    (goto-char (point-max))
+    (insert-char char (window-width))
+    (newline)))
 
 (defun test-case-run-buffers (buffers)
   "Run the tests visited by BUFFERS.
