@@ -940,10 +940,10 @@ Install this the following way:
   (test-case--add-text-properties-for-match file '(face test-case-result-file))
   (test-case--add-text-properties-for-match line '(face test-case-result-line))
   (test-case--add-text-properties-for-match col '(face test-case-result-column))
-  (test-case--add-text-properties-for-match
-   link '(mouse-face highlight follow-link t))
-  (test-case--add-text-properties-for-match
-   msg '(face test-case-result-message mouse-face highlight follow-link t))
+  (let ((link-props (when line '(mouse-face highlight follow-link t))))
+    (test-case--add-text-properties-for-match link link-props)
+    (test-case--add-text-properties-for-match
+     msg (append link-props '(face test-case-result-message))))
 
   (let ((props (list :failure (current-time)
                      :file (when file (match-string-no-properties file))
