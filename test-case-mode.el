@@ -102,7 +102,13 @@ current buffer.  They should be suitable for passing to
 must be the regular expression that matches the failure description as
 returned by the command.  The next elements should be the sub-expression
 numbers that match file name, line, column, name plus line (a clickable link),
-error message, and test-name. Each of these can be nil."
+error message, and test-name. Each of these can be nil.
+
+'failure-locate-func: If 'failure-pattern can't match a line number, the
+function may return a function to search for the test-name in the buffer.
+The function takes the test-name (from 'failure-pattern) as one argument
+and should return beginning and end points as car and cdr (like
+`test-case-locate')."
   :group 'test-case
   :type '(repeat function))
 
@@ -708,6 +714,7 @@ and `test-case-mode-line-info-position'."
     (save-excursion
       (let ((keywords (process-get proc 'test-case-failure-pattern))
             (file-name (process-get proc 'test-case-file))
+            (search-func (process-get proc 'test-case-search-func))
             (inhibit-read-only t))
           (if (eq out-buffer result-buffer)
               (goto-char (process-get proc 'test-case-beg))
@@ -715,7 +722,7 @@ and `test-case-mode-line-info-position'."
           (when keywords
             (while (re-search-forward (car keywords) nil t)
               (apply 'test-case-propertize-message
-                     file-name (cdr keywords))))))))
+                     file-name search-func (cdr keywords))))))))
 
 (defun test-case--skip-dead-process-buffers (next)
   (while (and next
@@ -771,6 +778,8 @@ and `test-case-mode-line-info-position'."
     (process-put process 'test-case-result-buffer result-buffer)
     (process-put process 'test-case-failure-pattern
                  (test-case-call-backend 'failure-pattern test-buffer))
+    (process-put process 'test-case-search-func
+                 (test-case-call-backend 'failure-locate-func test-buffer))
     (process-put process 'test-case-beg beg)
 
     (set-process-sentinel process 'test-case-process-sentinel)
@@ -911,22 +920,28 @@ Install this the following way:
 (defun test-case-result-add-markers (beg end find-file-p props)
   (let* ((file (plist-get props :file))
          (line (plist-get props :line))
+         (test (plist-get props :test))
+         (locate-func (plist-get props :locate-func))
          (buffer (when file
                    (if find-file-p
                        (find-file-noselect file)
                      (find-buffer-visiting file))))
          (inhibit-read-only t)
          beg-marker end-marker)
-    (when (and buffer line)
+    (when (and buffer (or line locate-func))
       (save-match-data
         (with-current-buffer buffer
           (save-excursion
             (goto-char (point-min))
-            (forward-line (1- line))
-            (back-to-indentation)
-            (setq beg-marker (copy-marker (point)))
-            (end-of-line)
-            (setq end-marker (copy-marker (point)))))
+            (if locate-func
+                (let ((match (funcall locate-func test)))
+                  (setq beg-marker (copy-marker (car match))
+                        end-marker (copy-marker (cdr match))))
+              (forward-line (1- line))
+              (back-to-indentation)
+              (setq beg-marker (copy-marker (point)))
+              (end-of-line)
+              (setq end-marker (copy-marker (point))))))
         (add-text-properties beg end
                              `(test-case-beg-marker ,beg-marker
                                test-case-end-marker ,end-marker))
@@ -939,13 +954,14 @@ Install this the following way:
     (test-case-result-add-markers beg end t
                                   (get-text-property pos 'test-case-props))))
 
-(defun test-case-propertize-message (file-name
+(defun test-case-propertize-message (file-name locate-func
                                      &optional file line col link msg test)
 
   (test-case--add-text-properties-for-match file '(face test-case-result-file))
   (test-case--add-text-properties-for-match line '(face test-case-result-line))
   (test-case--add-text-properties-for-match col '(face test-case-result-column))
-  (let ((link-props (when line '(mouse-face highlight follow-link t))))
+  (let* ((clickable-p (or locate-func line))
+         (link-props (when clickable-p '(mouse-face highlight follow-link t))))
     (test-case--add-text-properties-for-match link link-props)
     (test-case--add-text-properties-for-match
      msg (append link-props '(face test-case-result-message))))
@@ -956,7 +972,8 @@ Install this the following way:
                      :line (when line (string-to-number (match-string line)))
                      :column (when col (string-to-number (match-string col)))
                      :message (when msg (match-string-no-properties msg))
-                     :test (when test (match-string-no-properties test)))))
+                     :test (when test (match-string-no-properties test))
+                     :locate-func locate-func)))
     (test-case--add-text-properties-for-match 0 `(test-case-props ,props))
     (test-case-result-add-markers (match-beginning 0) (match-end 0) nil props)))
 
@@ -1068,13 +1085,22 @@ Customize `next-error-highlight' to modify the highlighting."
 ;;; back-end utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun test-case-grep (regexp)
+  (when (test-case--search regexp)
+    ;; Always return something, even if nothing was matched by the group.
+    (or (match-string-no-properties 1) "")))
+
+(defun test-case-locate (regexp &optional group)
+  "Search for REGEXP in the buffer and return match beginning and end."
+  (unless group (setq group 0))
+  (when (test-case--search regexp)
+    (cons (match-beginning group) (match-end group))))
+
+(defun test-case--search (regexp)
   (save-restriction
     (widen)
     (save-excursion
       (goto-char (point-min))
-      (when (re-search-forward regexp nil t)
-        ;; Always return something, even if nothing was matched by the group.
-        (or (match-string-no-properties 1) "")))))
+      (re-search-forward regexp nil t))))
 
 (defun test-case-c++-inherits (class &optional namespace)
   "Test if a class in the current buffer inherits from CLASS in NAMESPACE.
@@ -1437,6 +1463,13 @@ customize `test-case-cppunit-executable-name-func'"
   '("Test \\(.*\\) condition:\n\\(?:    .*\n\\)*"
     nil nil nil nil 0 1))
 
+(defun test-case-ert-search-test (name)
+  ;; Search the last match, because that's how ERT handles re-definitions.
+  (test-case-locate (concat "([\t ]*ert-deftest[\t ]*\\("
+                            (regexp-quote name)
+                            "\\)[\t ]*(")
+                    1))
+
 (defun test-case-ert-backend (command)
   (case command
     ('name "ERT")
@@ -1444,6 +1477,7 @@ customize `test-case-cppunit-executable-name-func'"
     ('command (test-case-ert-command))
     ('save t)
     ('failure-pattern test-case-ert-failure-pattern)
+    ('failure-locate-func 'test-case-ert-search-test)
     ('font-lock-keywords test-case-ert-font-lock-keywords)))
 
 (provide 'test-case-mode)
