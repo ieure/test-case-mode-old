@@ -59,6 +59,7 @@
 ;;
 ;;; Change Log:
 ;;
+;;    Some refactoring.
 ;;    Added support for ERT (Emacs Lisp Regression Testing).
 ;;
 ;; 2009-03-30 (0.1)
@@ -649,7 +650,8 @@ and `test-case-mode-line-info-position'."
           (test-buffer (process-get proc 'test-case-buffer))
           (result-buffer (process-get proc 'test-case-result-buffer))
           (keywords (process-get proc 'test-case-failure-pattern))
-          (failure (/= 0 (process-exit-status proc)))
+          (beg (process-get proc 'test-case-beg))
+          (failure-p (/= 0 (process-exit-status proc)))
           (next (pop test-case-current-run-left))
           (more (test-case-process-list))
           (inhibit-read-only t))
@@ -663,26 +665,12 @@ and `test-case-mode-line-info-position'."
         (insert-char ?= fill-column)
         (newline))
 
-      (when (buffer-live-p test-buffer)
-        (test-case-set-buffer-state
-         (if failure
-             'failure
-           (if (eq (process-get proc 'test-case-tick)
-                   (buffer-modified-tick test-buffer))
-               'success
-           'success-modified))
-         test-buffer))
+      (test-case--update-buffer-state proc failure-p test-buffer)
 
       ;; Update the results.
-      (when keywords
-        (if (eq out-buffer result-buffer)
-            (test-case-parse-result result-buffer keywords
-                                    (process-get proc 'test-case-beg))
-          (let ((beg (with-current-buffer result-buffer (point-max))))
-            (test-case-copy-result out-buffer result-buffer)
-            (test-case-parse-result result-buffer keywords beg))))
+      (test-case--parse-result beg keywords result-buffer out-buffer)
 
-      (when failure
+      (when failure-p
 
         (when test-case-abort-on-first-failure
           (test-case-abort t)
@@ -698,30 +686,62 @@ and `test-case-mode-line-info-position'."
             (test-case-set-global-state 'running-failure)
             (test-case-echo-state 'running-failure))))
 
-      ;; Remove dead buffers
-      (while (and next
-                  (not (and (buffer-live-p next)
-                            (buffer-local-value 'test-case-mode next))))
-        (setq next (pop test-case-current-run-left)))
+      (setq next (test-case--skip-dead-process-buffers next))
 
       (if next
-          ;; continue
-          (if (eq out-buffer result-buffer)
-              ;; linear
-              (test-case-run-internal next result-buffer out-buffer)
-            ;; parallel, re-use out-buffer
-            (with-current-buffer out-buffer
-              (let ((inhibit-read-only t))
-                (erase-buffer)
-                (test-case-run-internal next result-buffer out-buffer))))
-        ;; No more work to do.
-        (unless (eq out-buffer result-buffer)
-          (kill-buffer out-buffer))
+          (test-case--run-next-test out-buffer result-buffer next)
+        (test-case--cleanup-process result-buffer out-buffer)
         (unless more
-          ;; all done
-          (test-case-set-global-state (test-case-calculate-global-state))
-          (test-case-echo-state
-           (test-case-calculate-global-state test-case-current-run)))))))
+          (test-case--cleanup-all))))))
+
+(defun test-case--update-buffer-state (proc failure-p test-buffer)
+  (when (buffer-live-p test-buffer)
+    (test-case-set-buffer-state
+     (if failure-p
+         'failure
+       (if (eq (process-get proc 'test-case-tick)
+               (buffer-modified-tick test-buffer))
+           'success
+         'success-modified))
+     test-buffer)))
+
+(defun test-case--parse-result (beg keywords result-buffer out-buffer)
+  (with-current-buffer result-buffer
+    (save-excursion
+      (let ((inhibit-read-only t))
+        (if (eq out-buffer result-buffer)
+            (goto-char beg)
+          (goto-char (test-case-copy-result out-buffer result-buffer)))
+        (add-text-properties beg (point-max) 'test-case-file)
+        (when keywords
+          (while (re-search-forward (car keywords) nil t)
+            (apply 'test-case-propertize-message (cdr keywords))))))))
+
+(defun test-case--skip-dead-process-buffers (next)
+  (while (and next
+              (not (and (buffer-live-p next)
+                        (buffer-local-value 'test-case-mode next))))
+    (setq next (pop test-case-current-run-left)))
+  next)
+
+(defun test-case--run-next-test (result-buffer process-out-buffer next)
+  (unless (eq process-out-buffer result-buffer)
+    (test-case--erase-buffer process-out-buffer))
+  (test-case-run-internal next result-buffer process-out-buffer))
+
+(defun test-case--erase-buffer (buffer)
+  (with-current-buffer buffer
+    (let ((inhibit-read-only t))
+      (erase-buffer))))
+
+(defun test-case--cleanup-process (result-buffer out-buffer)
+  (unless (eq out-buffer result-buffer)
+    (kill-buffer out-buffer)))
+
+(defun test-case--cleanup-all ()
+  (test-case-set-global-state (test-case-calculate-global-state))
+  (test-case-echo-state
+   (test-case-calculate-global-state test-case-current-run)))
 
 (defun test-case-run-internal (test-buffer result-buffer &optional out-buffer)
   (let ((inhibit-read-only t)
@@ -953,17 +973,6 @@ Install this the following way:
                            test-case-message ,msg))
     (test-case-result-add-markers (match-beginning 0) (match-end 0) nil
                                   file line col msg)))
-
-(defun test-case-parse-result (result-buffer keywords &optional beg end)
-  (with-current-buffer result-buffer
-    (save-excursion
-      (let ((inhibit-read-only t))
-        (unless beg (setq beg (point-min)))
-        (unless end (setq end (point-max)))
-        (goto-char beg)
-        (add-text-properties beg end 'test-case-file)
-        (while (re-search-forward (car keywords) end t)
-          (apply 'test-case-propertize-message (cdr keywords)))))))
 
 (defun test-case-follow-link (pos)
   "Follow the link at POS in an error buffer."
