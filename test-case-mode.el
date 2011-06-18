@@ -712,7 +712,6 @@ and `test-case-mode-line-info-position'."
         (if (eq out-buffer result-buffer)
             (goto-char beg)
           (goto-char (test-case-copy-result out-buffer result-buffer)))
-        (add-text-properties beg (point-max) 'test-case-file)
         (when keywords
           (while (re-search-forward (car keywords) nil t)
             (apply 'test-case-propertize-message (cdr keywords))))))))
@@ -884,7 +883,7 @@ Install this the following way:
         (switch-to-buffer buffer)
       (message "No result buffer found"))))
 
-(defun test-case-insert-failure-overlay (beg end buffer msg)
+(defun test-case-insert-failure-overlay (beg end buffer props)
   "Insert an overlay marking a failure between BEG and END in BUFFER."
   (with-current-buffer buffer
     (and (fboundp 'fringe-helper-insert-region)
@@ -897,21 +896,24 @@ Install this the following way:
                test-case-error-overlays))
     (push (make-overlay beg end) test-case-error-overlays)
     (overlay-put (car test-case-error-overlays) 'face 'test-case-failure)
-    (overlay-put (car test-case-error-overlays) 'help-echo msg)
-    (overlay-put (car test-case-error-overlays) 'test-case-message msg)))
+    (let ((msg (plist-get props :message)))
+      (overlay-put (car test-case-error-overlays) 'help-echo msg)
+      (overlay-put (car test-case-error-overlays) 'test-case-message msg))))
 
 (defun test-case-remove-failure-overlays (buffer)
   "Remove all overlays added by `test-case-insert-failure-overlay' in BUFFER."
   (with-current-buffer buffer
     (mapc 'delete-overlay test-case-error-overlays)))
 
-(defun test-case-result-add-markers (beg end find-file-p file line col msg)
-  (let ((buffer (when file
-                  (if find-file-p
-                      (find-file-noselect file)
-                    (find-buffer-visiting file))))
-        (inhibit-read-only t)
-        beg-marker end-marker)
+(defun test-case-result-add-markers (beg end find-file-p props)
+  (let* ((file (plist-get props :file))
+         (line (plist-get props :line))
+         (buffer (when file
+                   (if find-file-p
+                       (find-file-noselect file)
+                     (find-buffer-visiting file))))
+         (inhibit-read-only t)
+         beg-marker end-marker)
     (when (and buffer line)
       (save-match-data
         (with-current-buffer buffer
@@ -925,16 +927,14 @@ Install this the following way:
         (add-text-properties beg end
                              `(test-case-beg-marker ,beg-marker
                                test-case-end-marker ,end-marker))
-        (test-case-insert-failure-overlay beg-marker end-marker buffer msg)))))
+        (test-case-insert-failure-overlay beg-marker end-marker buffer
+                                          props)))))
 
 (defun test-case-result-supplement-markers (pos)
   (let* ((end (next-single-property-change pos 'test-case-failure))
          (beg (previous-single-property-change end 'test-case-failure)))
     (test-case-result-add-markers beg end t
-                                  (get-text-property pos 'test-case-file)
-                                  (get-text-property pos 'test-case-line)
-                                  (get-text-property pos 'test-case-column)
-                                  (get-text-property pos 'test-case-message))))
+                                  (get-text-property pos 'test-case-props))))
 
 (defun test-case-propertize-message (file line col link msg)
 
@@ -946,18 +946,13 @@ Install this the following way:
   (test-case--add-text-properties-for-match
    msg '(face test-case-result-message mouse-face highlight follow-link t))
 
-  (let ((file (when file (match-string-no-properties file)))
-        (line (when line (string-to-number (match-string-no-properties line))))
-        (col (when col (string-to-number (match-string-no-properties col))))
-        (msg (when msg (match-string-no-properties msg))))
-    (test-case--add-text-properties-for-match
-     0 `(test-case-failure ,(current-time) ;; unique
-         test-case-file ,file
-         test-case-line ,line
-         test-case-column ,col
-         test-case-message ,msg))
-    (test-case-result-add-markers (match-beginning 0) (match-end 0) nil
-                                  file line col msg)))
+  (let ((props (list :failure (current-time)
+                     :file (when file (match-string-no-properties file))
+                     :line (when line (string-to-number (match-string line)))
+                     :column (when col (string-to-number (match-string col)))
+                     :message (when msg (match-string-no-properties msg)))))
+    (test-case--add-text-properties-for-match 0 `(test-case-props ,props))
+    (test-case-result-add-markers (match-beginning 0) (match-end 0) nil props)))
 
 (defun test-case--add-text-properties-for-match (match props)
   (and match
