@@ -27,7 +27,7 @@
 ;;; Commentary:
 ;;
 ;; `test-case-mode' is a minor mode for running unit tests.  It is extensible
-;; and currently comes with back-ends for JUnit, CxxTest, CppUnit, Python
+;; and currently comes with back-ends for JUnit, CxxTest, CppUnit, gtest, Python
 ;; and Ruby.
 ;;
 ;; The back-ends probably need some more path options to work correctly.
@@ -60,6 +60,7 @@
 ;;; Change Log:
 ;;
 ;;    Some refactoring.
+;;    Added support for gtest (google-test).
 ;;    Added support for ERT (Emacs Lisp Regression Testing).
 ;;
 ;; 2009-03-30 (0.1)
@@ -82,7 +83,8 @@
 
 (defcustom test-case-backends
   '(test-case-junit-backend test-case-ruby-backend test-case-cxxtest-backend
-    test-case-cppunit-backend test-case-python-backend test-case-ert-backend)
+    test-case-cppunit-backend test-case-gtest-backend test-case-python-backend
+    test-case-ert-backend)
   "*Test case backends.
 Each function in this list is called with a command, which is one of these:
 
@@ -1441,6 +1443,64 @@ customize `test-case-cppunit-executable-name-func'"
     ('command (test-case-cppunit-command))
     ('failure-pattern (test-case-cppunit-failure-pattern))
     ('font-lock-keywords test-case-cppunit-font-lock-keywords)))
+
+;; google-test ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom test-case-gtest-executable-name-func 'file-name-sans-extension
+  "A function that returns the executable name for a google-test test."
+  :group 'test-case
+  :type 'function)
+
+(defun test-case-gtest-p ()
+  "Test if the current buffer is a CppUnit test."
+  (and (derived-mode-p 'c++-mode)
+       (test-case-grep "#include\s+\\([<\"]\\)gtest[/\\]gtest.h[>\"]")
+       (test-case-grep "TEST[ \t]*(")))
+
+(defun test-case-gtest-command ()
+  (let ((executable (funcall test-case-cppunit-executable-name-func
+                             buffer-file-name)))
+    (unless (file-exists-p executable)
+      (error "Executable %s not found" executable))
+    (when (file-newer-than-file-p buffer-file-name executable)
+      (error "Test case executable %s out of date" executable))
+    executable))
+
+(defvar test-case-gtest-font-lock-keywords
+  (eval-when-compile
+    `((,(concat
+         "\\_<\\(ASSERT\\|EXPECT\\)_"
+         (regexp-opt '("TRUE" "FALSE" "EQ" "NE" "LT" "LE" "GT" "GE" "STREQ"
+                       "STRNE" "STRCASEEQ" "STRCASENE" "THROW" "ANY_THROW"
+                       "NO_THROW" "FLOAT_EQ" "DOUBLE_EQ" "NEAR"
+                       "HRESULT_SUCCEEDED" "HRESULT_FAILED"))
+         "\\_>")
+       (0 'test-case-assertion prepend))
+      (,(regexp-opt '("SUCCEED" "FAIL" "ADD_FAILURE") 'symbols)
+       (0 'test-case-assertion prepend)))))
+
+(defvar test-case-gtest-message-lines
+  (eval-when-compile (regexp-opt '("Value of" "Actual" "Expected"))))
+
+(defun test-case-gtest-failure-pattern ()
+  (let ((file (regexp-quote (file-name-nondirectory (buffer-file-name)))))
+    (list (concat "\\(\\(" file "\\):\\([0-9]+\\)\\)[^\n]*\n"
+                  "\\(\\(?:[ \t]*" test-case-gtest-message-lines
+                  "[^\n]*\n?\\)*\\)\n")
+          2 3 nil 1 4)))
+
+(defun test-case-gtest-backend (command)
+  "google-test back-end for `test-case-mode'.
+Since these tests can't be dynamically loaded, each test has to be
+compiled into its own executable.  The executable should have the same
+name as the test, but without the extension.  If it doesn't, customize
+`test-case-gtest-executable-name-func'"
+  (case command
+    ('name "gtest")
+    ('supported (test-case-gtest-p))
+    ('command (test-case-gtest-command))
+    ('failure-pattern (test-case-gtest-failure-pattern))
+    ('font-lock-keywords test-case-gtest-font-lock-keywords)))
 
 ;; ERT ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
