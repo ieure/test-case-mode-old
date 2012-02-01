@@ -730,9 +730,13 @@ and `test-case-mode-line-info-position'."
       (with-parsed-tramp-file-name path remote remote-localname)
       path))
 
+(defun test-case-run-directory (test-buffer)
+  (unwind-protect (test-case-call-backend 'directory test-buffer)
+    (file-name-directory (buffer-file-name test-buffer))))
+
 (defun test-case-run-internal (test-buffer result-buffer &optional out-buffer)
   (let ((inhibit-read-only t)
-        (default-directory (file-name-directory (buffer-file-name test-buffer)))
+        (default-directory (test-case-run-directory test-buffer))
         command beg process)
 
     (unless out-buffer (setq out-buffer result-buffer))
