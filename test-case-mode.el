@@ -4,7 +4,8 @@
 ;; Copyright (C) 2009-2102 Ian Eure
 ;;
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
-;; Author: Ian Eure <ian.eure gmail com>
+;;  Ian Eure <ian.eure gmail com>
+;; Maintainer: Ian Eure <ian.eure gmail com>
 ;; Version: 0.1.3
 ;; Keywords: tools
 ;; URL: http://nschum.de/src/emacs/test-case-mode/
@@ -1514,4 +1515,5 @@ customize `test-case-cppunit-executable-name-func'"
     ('font-lock-keywords test-case-cppunit-font-lock-keywords)))
 
 (provide 'test-case-mode)
+
 ;;; test-case-mode.el ends here
