@@ -176,7 +176,8 @@ See `compilation-context-lines'."
   :group 'test-case
   :type '(choice integer (const :tag "No window scrolling" nil)))
 
-;;; faces ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; faces ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defface test-case-mode-line-success
   '((t (:inherit mode-line-buffer-id
@@ -241,7 +242,8 @@ See `compilation-context-lines'."
   "*Face used for highlighting file link columns"
   :group 'test-case)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar test-case-result-buffer-name "*Test Result*")
 
@@ -277,7 +279,8 @@ See `compilation-context-lines'."
         (push proc processes)))
     processes))
 
-;;; buffer id ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; buffer id ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar test-case-buffer-id-string nil)
 (make-variable-buffer-local 'test-case-buffer-id-string)
@@ -296,7 +299,8 @@ See `compilation-context-lines'."
     (add-text-properties 0 (length test-case-buffer-id-string)
                          `(face ,face) test-case-buffer-id-string)))
 
-;;; dot ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; dot ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar test-case-dot-keymap
   (let ((map (make-sparse-keymap)))
@@ -371,7 +375,8 @@ mode-line is local before installing."
             (success-modified (test-case-make-dot "dark olive green" "orange"))
             (otherwise (test-case-make-dot "gray10")))))
 
-;;; states ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; states ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar test-case-state 'unknown
   "The state of the current buffer test.
@@ -451,7 +456,8 @@ This assumes that no test is still running."
 
         (run-hook-with-args 'test-case-state-change-hook old-state state)))))
 
-;;; global mode ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; global mode ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar test-case-global-mode-map (make-sparse-keymap)
   "Keymap used by `test-case-global-mode'.")
@@ -466,7 +472,8 @@ This assumes that no test is still running."
     (test-case-set-global-state 'unknown)
     (test-case-remove-dot t)))
 
-;;; mode ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; mode ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar test-case-lighter " Test"
   "The mode-line string used by ``test-case-mode''.
@@ -559,7 +566,8 @@ and `test-case-mode-line-info-position'."
   (interactive)
   (mapc 'kill-buffer (test-case-buffer-list)))
 
-;;; menu ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; menu ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar test-case-menu nil)
 (defvar test-case-minor-mode-menu nil)
@@ -613,7 +621,8 @@ and `test-case-mode-line-info-position'."
   (interactive)
   (popup-menu test-case-menu))
 
-;;; running ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; running ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar test-case-last-run nil)
 (defvar test-case-current-run nil)
@@ -849,7 +858,8 @@ Install this the following way:
        (equal result "finished\n")
        (test-case-run-all)))
 
-;;; results ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; results ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar test-case-error-pos nil)
 (make-variable-buffer-local 'test-case-error-pos)
@@ -999,7 +1009,8 @@ Install this the following way:
 (defun test-case-failure-message-at-point ()
   (get-char-property (point) 'test-case-message))
 
-;;; echo failure messages ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; echo failure messages ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar test-case-echo-failure-mode-map (make-sparse-keymap))
 
@@ -1016,7 +1027,8 @@ Install this the following way:
       (add-hook 'post-command-hook 'test-case-echo-failure-at-point nil t)
     (remove-hook 'post-command-hook 'test-case-echo-failure-at-point t)))
 
-;;; next-error ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; next-error ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun test-case-next-error (arg)
   (let ((pos test-case-error-pos))
@@ -1048,7 +1060,8 @@ Install this the following way:
           (test-case-next-error arg)))
   (test-case-follow-link test-case-error-pos))
 
-;;; follow-mode ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; follow-mode ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar test-case-result-follow-last-link nil)
 (make-variable-buffer-local 'test-case-follow-last-link)
@@ -1078,7 +1091,8 @@ Customize `next-error-highlight' to modify the highlighting."
           (save-excursion
             (test-case-follow-link beg)))))))
 
-;;; back-end utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; back-end utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun test-case-grep (regexp)
   (save-restriction
@@ -1104,7 +1118,8 @@ CLASS and NAMESPACE need to be `regexp-quote'd."
                               (regexp-opt '("public" "private" "protected")))
                             "\s+" class))))
 
-;;; junit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; junit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom test-case-junit-java-executable (executable-find "java")
   "The Java executable used to run JUnit tests."
@@ -1226,6 +1241,7 @@ configured correctly.  The classpath is determined by
     ('failure-pattern (test-case-junit-failure-pattern))
     ('font-lock-keywords test-case-junit-font-lock-keywords)))
 
+
 ;;; simplespec ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom test-case-simplespec-mvn-executable (executable-find "mvn")
@@ -1312,6 +1328,7 @@ configured correctly.  The classpath is determined by
     ('failure-pattern (test-case-simplespec-failure-pattern))
     ('font-lock-keywords test-case-simplespec-font-lock-keywords)))
 
+
 ;; php ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom test-case-phpunit-executable (executable-find "phpunit")
@@ -1361,7 +1378,8 @@ configured correctly.  The classpath is determined by
     ('failure-pattern test-case-phpunit-failure-pattern)
     ('font-lock-keywords test-case-phpunit-font-lock-keywords)))
 
-;; ruby ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ruby ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom test-case-ruby-executable (executable-find "ruby")
   "The Ruby executable used to run Ruby tests."
@@ -1404,7 +1422,8 @@ configured correctly.  The classpath is determined by
     ('failure-pattern test-case-ruby-failure-pattern)
     ('font-lock-keywords test-case-ruby-font-lock-keywords)))
 
-;; pyunit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; pyunit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom test-case-python-executable (executable-find "python")
   "The Python executable used to run Python tests."
@@ -1448,7 +1467,8 @@ configured correctly.  The classpath is determined by
     ('failure-pattern (test-case-python-failure-pattern))
     ('font-lock-keywords test-case-python-font-lock-keywords)))
 
-;; cxxtest ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; cxxtest ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom test-case-cxxtest-executable-name-func 'file-name-sans-extension
   "A function that returns the executable name for a cxxtest test."
@@ -1507,7 +1527,8 @@ customize `test-case-cxxtest-executable-name-func'"
     ('failure-pattern (test-case-cxxtest-failure-pattern))
     ('font-lock-keywords test-case-cxxtest-font-lock-keywords)))
 
-;; cppunit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; cppunit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom test-case-cppunit-executable-name-func 'file-name-sans-extension
   "A function that returns the executable name for a CppUnit test."
