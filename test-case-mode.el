@@ -1,9 +1,11 @@
 ;;; test-case-mode.el --- unit test front-end
 ;;
-;; Copyright (C) 2009 Nikolaj Schumacher
+;; Copyright (C) 2009, 2012 Nikolaj Schumacher
+;; Copyright (C) 2009-2102 Ian Eure
 ;;
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
-;; Version: 0.1
+;; Author: Ian Eure <ian.eure gmail com>
+;; Version: 0.1.3
 ;; Keywords: tools
 ;; URL: http://nschum.de/src/emacs/test-case-mode/
 ;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x
@@ -78,8 +80,11 @@
   :group 'tools)
 
 (defcustom test-case-backends
-  '(test-case-junit-backend test-case-ruby-backend test-case-cxxtest-backend
-    test-case-cppunit-backend test-case-python-backend)
+  '(test-case-junit-backend
+    test-case-ruby-backend
+    test-case-cxxtest-backend
+    test-case-cppunit-backend
+    test-case-python-backend)
   "*Test case backends.
 Each function in this list is called with a command, which is one of these:
 
@@ -1250,7 +1255,7 @@ configured correctly.  The classpath is determined by
     ('supported (and (derived-mode-p 'ruby-mode)
                      (test-case-grep "require\s+['\"]test/unit['\"]")))
     ('command (concat test-case-ruby-executable " "
-                      test-case-ruby-arguments " " 
+                      test-case-ruby-arguments " "
                       (test-case-localname buffer-file-name)))
     ('save t)
     ('failure-pattern test-case-ruby-failure-pattern)
@@ -1294,7 +1299,7 @@ configured correctly.  The classpath is determined by
     ('supported (and (derived-mode-p 'python-mode)
                      (or (test-case-grep "\\_<import\s+unittest\\_>")
                          (test-case-grep "\\_<import\s+nose\\_>"))))
-    ('command (concat test-case-python-executable " " 
+    ('command (concat test-case-python-executable " "
                       (test-case-localname buffer-file-name)))
     ('save t)
     ('failure-pattern (test-case-python-failure-pattern))
