@@ -84,7 +84,8 @@
     test-case-ruby-backend
     test-case-cxxtest-backend
     test-case-cppunit-backend
-    test-case-python-backend)
+    test-case-python-backend
+    test-case-simplespec-backend)
   "*Test case backends.
 Each function in this list is called with a command, which is one of these:
 
@@ -1222,6 +1223,92 @@ configured correctly.  The classpath is determined by
     ('command (test-case-junit-command))
     ('failure-pattern (test-case-junit-failure-pattern))
     ('font-lock-keywords test-case-junit-font-lock-keywords)))
+
+;;; simplespec ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom test-case-simplespec-mvn-executable (executable-find "mvn")
+  "The Maven executable used to run Simplespec tests."
+  :group 'test-case
+  :type 'file)
+
+(defcustom test-case-simplespec-mvn-arguments ""
+  "The command line arguments used to run Simplespec tests."
+  :group 'test-case
+  :type 'string)
+
+(defcustom test-case-simplespec-class-pattern
+  "class\\s-+\\([a-zA-Z0-9]+Spec\\)"
+  "The pattern to use to match SimpleSpec test classes."
+  :group 'test-case
+  :type 'regexp)
+
+(defconst test-case-simplespec-assertion-re
+  "java\\.lang\\.AssertionError: \\(.*\\)
+\\(^[ \t]+at .*
+\\)*?")
+
+(defalias 'test-case-simplespec-grep-package 'test-case-junit-grep-package)
+
+(defun test-case-simplespec-classes ()
+  "Return a list of SimpleSpec test classes in the current buffer."
+  (save-excursion
+    (save-match-data
+      (save-restriction
+        (widen)
+        (goto-char (point-min))
+        (let ((matches))
+          (while (re-search-forward test-case-simplespec-class-pattern nil t)
+            (setq matches (cons (match-string-no-properties 1) matches)))
+          matches)))))
+
+(defun test-case-simplespec-command ()
+  (let ((test-classes (test-case-simplespec-classes)))
+    (unless test-classes
+      (error "No test classes found in this file. Check test-case-simplespec-class-pattern?"))
+    (format "%s %s test -Dtest=%s"
+            test-case-simplespec-mvn-executable
+            test-case-simplespec-mvn-arguments
+            (c-concat-separated test-classes ","))))
+
+(defun test-case-simplespec-directory ()
+  (locate-dominating-file (buffer-file-name) "pom.xml"))
+
+(defvar test-case-simplespec-font-lock-keywords
+  (eval-when-compile
+    `((,(concat (concat "\\.must(.*"
+                        (regexp-opt '("be" "equal" "not" "haveSize"
+                                      "contain" "approximately" "lessThan.*"
+                                      "greaterThan.*" "startWith" "endWith"
+                                      "match"))
+                        ")"))
+       (0 'test-case-assertion prepend)))))
+
+(defun test-case-simplespec-failure-pattern ()
+  (let ((file (regexp-quote (file-name-nondirectory buffer-file-name))))
+    (list (concat "\\(" test-case-simplespec-assertion-re "\\)?"
+                  test-case-junit-backtrace-re-1 file
+                  test-case-junit-backtrace-re-2)
+          5 6 nil 4 2)))
+
+(defvar test-case-simplespec-import-regexp
+  "import\\s +com.codahale.simplespec")
+
+(defvar test-case-simplespec-extends-regexp
+  "extends\\s +\\w+Spec")
+
+(defun test-case-simplespec-backend (command)
+  "Simplespec back-end for `test-case-mode'."
+  (case command
+    ('name "Simplespec")
+    ('save t)
+    ('supported (and (derived-mode-p 'scala-mode)
+                     (test-case-grep test-case-simplespec-import-regexp)
+                     (test-case-grep test-case-simplespec-extends-regexp)
+                     t))
+    ('command (test-case-simplespec-command))
+    ('directory (test-case-simplespec-directory))
+    ('failure-pattern (test-case-simplespec-failure-pattern))
+    ('font-lock-keywords test-case-simplespec-font-lock-keywords)))
 
 ;; ruby ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
