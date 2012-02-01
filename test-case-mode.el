@@ -85,6 +85,7 @@
     test-case-ruby-backend
     test-case-cxxtest-backend
     test-case-cppunit-backend
+    test-case-php-backend
     test-case-python-backend
     test-case-simplespec-backend)
   "*Test case backends.
@@ -1310,6 +1311,55 @@ configured correctly.  The classpath is determined by
     ('directory (test-case-simplespec-directory))
     ('failure-pattern (test-case-simplespec-failure-pattern))
     ('font-lock-keywords test-case-simplespec-font-lock-keywords)))
+
+;; php ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom test-case-phpunit-executable (executable-find "phpunit")
+  "The phpunit executable used to run PHPUnit tests."
+  :group 'test-case
+  :type 'file)
+
+(defcustom test-case-phpunit-arguments ""
+  "The command line arguments used to run PHPUnit tests."
+  :group 'test-case
+  :type 'string)
+
+(defconst test-case-phpunit-failure-pattern
+  '("^[0-9]+)\s+\\(.*\\)\n\\(Failed.*\\)\n\\([^:]+\\):\\([0-9]+\\)"
+    3 4 nil 2 0)
+  "Regular expression for matchin PHPUnit failute output.")
+
+(defconst test-case-phpunit-test-pattern
+  "\\<extends\\>.*Tests?_?\\(Case\\|Suite\\)?"
+  "Regular expression for locating classes which extend PHPUnit.")
+
+(defconst test-case-phpunit-font-lock-keywords
+  '("\\<$this->assert[^\s(]+\\>"
+    (0 'test-case-assertion prepend))
+  "Regular expression for PHPUnit assertions.")
+
+(defconst test-case-phpunit-class-pattern
+  "class\s+\\([^\s]*Test[^\s]*\\)"
+  "Regular expression for matchin PHPUnit test class names.")
+
+(defun test-case-phpunit-find-test-class ()
+  "Determine the name of the test class"
+  (test-case-grep test-case-phpunit-class-pattern))
+
+(defun test-case-phpunit-backend (command)
+  "PHPUnit back-end for `test-case-mode'."
+  (case command
+    ('name "PHPUnit")
+    ('supported (and (derived-mode-p 'php-mode)
+                     (test-case-grep test-case-phpunit-test-pattern)
+                     t))
+    ('command (format "%s %s %s %s" test-case-phpunit-executable
+                      test-case-phpunit-arguments
+                      (test-case-phpunit-find-test-class)
+                      (test-case-localname buffer-file-name)))
+    ('save t)
+    ('failure-pattern test-case-phpunit-failure-pattern)
+    ('font-lock-keywords test-case-phpunit-font-lock-keywords)))
 
 ;; ruby ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
