@@ -744,8 +744,8 @@ and `test-case-mode-line-info-position'."
       path))
 
 (defun test-case-run-directory (test-buffer)
-  (unwind-protect (test-case-call-backend 'directory test-buffer)
-    (file-name-directory (buffer-file-name test-buffer))))
+  (or (unwind-protect (test-case-call-backend 'directory test-buffer) nil)
+      (file-name-directory (buffer-file-name test-buffer))))
 
 (defun test-case-run-internal (test-buffer result-buffer &optional out-buffer)
   (let ((inhibit-read-only t)
