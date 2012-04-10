@@ -69,6 +69,7 @@
 
 (eval-when-compile (require 'cl))
 (require 'compile)
+(require 'cc-defs)
 (require 'fringe-helper nil t)
 
 (dolist (err '("^test-case-mode not enabled$" "^Test not recognized$"
@@ -85,7 +86,7 @@
     test-case-ruby-backend
     test-case-cxxtest-backend
     test-case-cppunit-backend
-    test-case-php-backend
+    test-case-phpunit-backend
     test-case-python-backend
     test-case-simplespec-backend)
   "*Test case backends.
@@ -1312,7 +1313,7 @@ configured correctly.  The classpath is determined by
   "import\\s +com.codahale.simplespec")
 
 (defvar test-case-simplespec-extends-regexp
-  "extends\\s +\\w+Spec")
+  "extends\\s +\\w*Spec")
 
 (defun test-case-simplespec-backend (command)
   "Simplespec back-end for `test-case-mode'."
