@@ -834,7 +834,8 @@ Calling this aborts all running tests.  To run multiple tests use
 `test-case-run-all' or `test-case-run-buffers'."
   (interactive)
   (with-current-buffer (or buffer (current-buffer))
-    (unless test-case-mode
+
+    (unless (or test-case-mode (test-case-mode))
       (error "test-case-mode not enabled"))
     (test-case-run-buffers (setq test-case-last-run (list (current-buffer))))))
 
