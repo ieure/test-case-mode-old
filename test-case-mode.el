@@ -4,9 +4,9 @@
 ;; Copyright (C) 2009-2102 Ian Eure
 ;;
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
-;;  Ian Eure <ian.eure gmail com>
+;; Author: Ian Eure <ian.eure gmail com>
 ;; Maintainer: Ian Eure <ian.eure gmail com>
-;; Version: 0.1.3
+;; Version: 0.1.5
 ;; Keywords: tools
 ;; URL: http://nschum.de/src/emacs/test-case-mode/
 ;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x
