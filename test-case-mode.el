@@ -6,7 +6,7 @@
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
 ;; Author: Ian Eure <ian.eure gmail com>
 ;; Maintainer: Ian Eure <ian.eure gmail com>
-;; Version: 0.1.5
+;; Version: 0.1.6
 ;; Keywords: tools
 ;; URL: http://nschum.de/src/emacs/test-case-mode/
 ;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x
@@ -1311,7 +1311,7 @@ configured correctly.  The classpath is determined by
           5 6 nil 4 2)))
 
 (defvar test-case-simplespec-import-regexp
-  "import\\s +com.codahale.simplespec")
+  "import\\s +com.\\(codahale\\|simple\\).simplespec")
 
 (defvar test-case-simplespec-extends-regexp
   "extends\\s +\\w*Spec")
