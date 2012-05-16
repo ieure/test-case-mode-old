@@ -88,7 +88,8 @@
     test-case-cppunit-backend
     test-case-phpunit-backend
     test-case-python-backend
-    test-case-simplespec-backend)
+    test-case-simplespec-backend
+    test-case-clojuretest-backend)
   "*Test case backends.
 Each function in this list is called with a command, which is one of these:
 
@@ -1329,6 +1330,55 @@ configured correctly.  The classpath is determined by
     ('directory (test-case-simplespec-directory))
     ('failure-pattern (test-case-simplespec-failure-pattern))
     ('font-lock-keywords test-case-simplespec-font-lock-keywords)))
+
+
+;;; clojure.test;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom test-case-clojuretest-lein-executable (executable-find "lein")
+  "The leiningen executable used to run Clojure tests."
+  :group 'test-case
+  :type 'file)
+
+(defvar test-case-clojuretest-font-lock-keywords
+  '(("is" (0 'test-case-assertion prepend))))
+
+(defun test-case-clojuretest-grep-package ()
+  (save-excursion
+    (save-match-data
+      (save-restriction
+        (widen)
+        (goto-char (point-min))
+        (search-forward "(ns " nil t)
+        (goto-char (match-beginning 0))
+        (search-forward "clojure\.test" (scan-sexps (point) 1) t)))))
+
+(defun test-case-clojuretest-command ()
+  (let ((ns (clojure-find-ns)))
+    (unless ns
+      (error "This doesn't seem to be Clojure code."))
+    (format "%s test %s"
+            test-case-clojuretest-lein-executable (clojure-find-ns))))
+
+(defun test-case-clojuretest-directory ()
+  (locate-dominating-file (buffer-file-name) "project.clj"))
+
+(defun test-case-clojuretest-failure-pattern ()
+  (let ((file (regexp-quote (file-name-nondirectory buffer-file-name))))
+    '("FAIL in\\s-+(.+?)\\s-+(\\(.+?\\):\\([0-9]+\\))\n.*"
+          1 2 nil nil 0)))
+
+(defun test-case-clojuretest-backend (command)
+  "Clojure.test back-end for `test-case-mode'."
+  (case command
+    ('name "clojure.test")
+    ('save t)
+    ('supported (and (derived-mode-p 'clojure-mode)
+                     (test-case-clojuretest-grep-package)
+                     t))
+    ('command (test-case-clojuretest-command))
+    ('directory (test-case-clojuretest-directory))
+    ('failure-pattern (test-case-clojuretest-failure-pattern))
+    ('font-lock-keywords test-case-clojuretest-font-lock-keywords)))
 
 
 ;; php ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
