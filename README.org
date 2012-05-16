@@ -1,0 +1,35 @@
+* Emacs test-case-mode
+
+  =test-case-mode= is a minor mode for running unit tests.  It is extensible
+  and supports several back-ends. It was originally written by Nikolaj
+  Schumacher and is currently maintained by Ian Eure.
+
+* Supported test backends
+
+  - JUnit
+  - CxxTest
+  - CppUnit
+  - Python unittest & nosetests
+  - Ruby
+  - SimpleSpec (for Scala)
+  - clojure.test
+
+* Installation
+
+  It’s [[http://marmalade-repo.org/packages/test-case-mode][available in Marmalade]]; please install from there:
+
+  - =M-x package-list-packages=
+  - =C-s test-case-mode=
+  - =i=
+  - =x=
+
+  To enable it automatically when opening test files:
+#+BEGIN_SRC emacs-lisp
+  (add-hook 'find-file-hook 'enable-test-case-mode-if-test)
+#+END_SRC
+
+  If you want to run all visited tests after a compilation, add:
+#+BEGIN_SRC emacs-lisp
+(add-hook 'compilation-finish-functions
+          'test-case-compilation-finish-run-all)
+#+END_SRC
