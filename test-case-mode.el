@@ -65,6 +65,14 @@
 ;; 2009-03-30 (0.1)
 ;;    Initial release.
 ;;
+;; 2012-02-01 (0.1.3)
+;;    PHPUnit, Tramp, and nosetests support.
+;;
+;; 2012-04-28 (0.1.5)
+;;    Allow tests to run from other directories. Add SimpleSpec
+;;    backend. Fix some bugs that prevented tests from running. Try
+;;    enabling T-C-M when test-case-run is called.
+;;
 ;;; Code:
 
 (eval-when-compile (require 'cl))
