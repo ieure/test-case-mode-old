@@ -30,8 +30,8 @@
 ;;; Commentary:
 ;;
 ;; `test-case-mode' is a minor mode for running unit tests.  It is extensible
-;; and currently comes with back-ends for JUnit, CxxTest, CppUnit, Python
-;; and Ruby.
+;; and currently comes with back-ends for JUnit, CxxTest, CppUnit, Python,
+;; Ruby, Scala (with SimpleSpec), and Clojure.
 ;;
 ;; The back-ends probably need some more path options to work correctly.
 ;; Please let me know, as I'm not an expert on all of them.
