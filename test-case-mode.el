@@ -1387,7 +1387,12 @@ configured correctly.  The classpath is determined by
 (defun test-case-clojuretest-error-pattern ()
   (let ((file (regexp-quote (file-name-nondirectory buffer-file-name))))
     (list (format "ERROR in .*\n.*\n\\(\\s-*expected: .*\n\\s-*actual: .*\\)[\0-\377[:nonascii:]]*?\n\s-*at[\0-\377[:nonascii:]]*?(\\(%s\\):\\([0-9]+\\))[\0-\377[:nonascii:]]*?\n\n" file)
-      2 3 nil 0 1)))
+          2 3 nil 0 1)))
+
+(defun test-case-clojuretest-compilation-error-pattern ()
+  (let ((file (regexp-quote (file-name-nondirectory buffer-file-name))))
+    (list (format "Exception in thread \".*?\" \\(.*?\\), compiling:(.*\\(%s\\):\\([0-9]+\\))" file)
+          2 3 nil nil 1)))
 
 (defun test-case-clojuretest-backend (command)
   "Clojure.test back-end for `test-case-mode'."
@@ -1400,6 +1405,7 @@ configured correctly.  The classpath is determined by
     ('command (test-case-clojuretest-command))
     ('directory (test-case-clojuretest-directory))
     ('failure-patterns (list test-case-clojuretest-failure-pattern
+                             (test-case-clojuretest-compilation-error-pattern)
                              (test-case-clojuretest-error-pattern)))
     ('font-lock-keywords test-case-clojuretest-font-lock-keywords)))
 
