@@ -1372,11 +1372,13 @@ configured correctly.  The classpath is determined by
         (search-forward "clojure\.test" (scan-sexps (point) 1) t)))))
 
 (defun test-case-clojuretest-command ()
-  (let ((ns (clojure-find-ns)))
-    (unless ns
-      (error "This doesn't seem to be Clojure code."))
-    (format "%s test %s"
-            test-case-clojuretest-lein-executable (clojure-find-ns))))
+  (save-restriction
+    (widen)
+    (let ((ns (clojure-find-ns)))
+      (unless ns
+        (error "This doesn't seem to be Clojure code."))
+      (format "%s test %s"
+              test-case-clojuretest-lein-executable (clojure-find-ns)))))
 
 (defun test-case-clojuretest-directory ()
   (locate-dominating-file (buffer-file-name) "project.clj"))
