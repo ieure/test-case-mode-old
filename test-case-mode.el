@@ -72,7 +72,7 @@
 ;;    backend. Fix some bugs that prevented tests from running. Try
 ;;    enabling T-C-M when test-case-run is called.
 ;;
-;; 2012-05-?? (0.1.6) - unreleased
+;; 2012-05-17 (0.1.6)
 ;;    Support SimpleSpec 0.6.0 & clojure.test. Allow multiple failure
 ;;    patterns.
 ;;
@@ -1355,10 +1355,10 @@ configured correctly.  The classpath is determined by
   :group 'test-case
   :type 'file)
 
-(defvar test-case-clojuretest-font-lock-keywords
-  `((,(concat "\\b"
-              (regexp-opt '("is" "are" "assert-any" "assert-predicate")))
-     (0 'test-case-assertion prepend))))
+(defconst test-case-clojuretest-font-lock-keywords
+  `((,(concat "(\\(" (regexp-opt '("is" "are"
+                                  "assert-any" "assert-predicate")) "\\)\\b")
+     (1 'test-case-assertion prepend))))
 
 (defun test-case-clojuretest-grep-package ()
   (save-excursion
