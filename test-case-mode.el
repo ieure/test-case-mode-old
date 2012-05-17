@@ -1371,14 +1371,17 @@ configured correctly.  The classpath is determined by
         (goto-char (match-beginning 0))
         (search-forward "clojure\.test" (scan-sexps (point) 1) t)))))
 
-(defun test-case-clojuretest-command ()
+(defun test-case-clojuretest-namespace ()
   (save-restriction
     (widen)
-    (let ((ns (clojure-find-ns)))
-      (unless ns
-        (error "This doesn't seem to be Clojure code."))
-      (format "%s test %s"
-              test-case-clojuretest-lein-executable (clojure-find-ns)))))
+    (clojure-find-ns)))
+
+(defun test-case-clojuretest-command ()
+  (let ((ns (test-case-clojuretest-namespace)))
+    (unless ns
+      (error "This doesn't seem to be Clojure code."))
+    (format "%s test %s"
+            test-case-clojuretest-lein-executable (clojure-find-ns))))
 
 (defun test-case-clojuretest-directory ()
   (locate-dominating-file (buffer-file-name) "project.clj"))
@@ -1388,7 +1391,7 @@ configured correctly.  The classpath is determined by
 
 (defun test-case-clojuretest-error-pattern ()
   (let ((file (regexp-quote (file-name-nondirectory buffer-file-name))))
-    (list (format "ERROR in .*\n.*\n\\(\\s-*expected: .*\n\\s-*actual: .*\\)[\0-\377[:nonascii:]]*?\n\s-*at[\0-\377[:nonascii:]]*?(\\(%s\\):\\([0-9]+\\))[\0-\377[:nonascii:]]*?\n\n" file)
+    (list (format "ERROR in .*\n.*\n\\(\\s-*expected: .*\n\\s-*actual: .*\\)[\0-\377[:nonascii:]]*?\n\s-*at[\0-\377[:nonascii:]]*?%s.*(\\(%s\\):\\([0-9]+\\))[\0-\377[:nonascii:]]*?\n\n" (regexp-quote (test-case-clojuretest-namespace)) file)
           2 3 nil 0 1)))
 
 (defun test-case-clojuretest-compilation-error-pattern ()
