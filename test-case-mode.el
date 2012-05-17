@@ -6,7 +6,7 @@
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
 ;; Author: Ian Eure <ian.eure gmail com>
 ;; Maintainer: Ian Eure <ian.eure gmail com>
-;; Version: 0.1.6
+;; Version: 0.1.7
 ;; Keywords: tools
 ;; URL: http://nschum.de/src/emacs/test-case-mode/
 ;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x
@@ -72,7 +72,7 @@
 ;;    backend. Fix some bugs that prevented tests from running. Try
 ;;    enabling T-C-M when test-case-run is called.
 ;;
-;; 2012-05-17 (0.1.6)
+;; 2012-05-17 (0.1.7)
 ;;    Support SimpleSpec 0.6.0 & clojure.test. Allow multiple failure
 ;;    patterns.
 ;;
