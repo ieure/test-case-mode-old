@@ -1352,7 +1352,9 @@ configured correctly.  The classpath is determined by
   :type 'file)
 
 (defvar test-case-clojuretest-font-lock-keywords
-  '(("is" (0 'test-case-assertion prepend))))
+  `((,(concat "\\b"
+              (regexp-opt '("is" "are" "assert-any" "assert-predicate")))
+     (0 'test-case-assertion prepend))))
 
 (defun test-case-clojuretest-grep-package ()
   (save-excursion
