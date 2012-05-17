@@ -1381,10 +1381,8 @@ configured correctly.  The classpath is determined by
 (defun test-case-clojuretest-directory ()
   (locate-dominating-file (buffer-file-name) "project.clj"))
 
-(defun test-case-clojuretest-failure-pattern ()
-  (let ((file (regexp-quote (file-name-nondirectory buffer-file-name))))
-    '("FAIL in ([^)]+) (\\([^:]+\\):\\([0-9]+\\))\n.*\n\\(\\s-*expected: .*\n\\s-*actual: .*\\)"
-      1 2 nil 0 3)))
+(defconst test-case-clojuretest-failure-pattern
+  '("FAIL in ([^)]+) (\\([^:]+\\):\\([0-9]+\\))[\0-\377[:nonascii:]]*?\\(\\s-*expected: .*\n\\s-*actual: .*\\)" 1 2 nil 0 3))
 
 (defun test-case-clojuretest-error-pattern ()
   (let ((file (regexp-quote (file-name-nondirectory buffer-file-name))))
@@ -1401,7 +1399,7 @@ configured correctly.  The classpath is determined by
                      t))
     ('command (test-case-clojuretest-command))
     ('directory (test-case-clojuretest-directory))
-    ('failure-patterns (list (test-case-clojuretest-failure-pattern)
+    ('failure-patterns (list test-case-clojuretest-failure-pattern
                              (test-case-clojuretest-error-pattern)))
     ('font-lock-keywords test-case-clojuretest-font-lock-keywords)))
 
