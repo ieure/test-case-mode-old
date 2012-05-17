@@ -73,6 +73,11 @@
 ;;    backend. Fix some bugs that prevented tests from running. Try
 ;;    enabling T-C-M when test-case-run is called.
 ;;
+;; 2012-05-?? (0.1.6) - unreleased
+;;    Support SimpleSpec 0.6.0 & clojure.test. Allow multiple failure
+;;    patterns.
+;;
+;;
 ;;; Code:
 
 (eval-when-compile (require 'cl))
