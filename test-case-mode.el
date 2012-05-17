@@ -113,11 +113,12 @@ buffer.
 current buffer.  They should be suitable for passing to
 `font-lock-add-keywords'.
 
-'failure-pattern: The function should return a list.  The first element
-must be the regular expression that matches the failure description as
-returned by the command.  The next elements should be the sub-expression
-numbers that match file name, line, column, name plus line (a clickable link)
-and error message. Each of these can be nil."
+'failure-patterns: The function should return a list of lists. The
+first element of the nested list(s) must be the regular expression
+that matches the failure description as returned by the command.  The
+next elements should be the sub-expression numbers that match file
+name, line, column, name plus line (a clickable link) and error
+message. Each of these can be nil."
   :group 'test-case
   :type '(repeat function))
 
@@ -673,7 +674,7 @@ and `test-case-mode-line-info-position'."
     (let ((out-buffer (process-buffer proc))
           (test-buffer (process-get proc 'test-case-buffer))
           (result-buffer (process-get proc 'test-case-result-buffer))
-          (keywords (process-get proc 'test-case-failure-pattern))
+          (keywords (process-get proc 'test-case-failure-patterns))
           (failure (/= 0 (process-exit-status proc)))
           (next (pop test-case-current-run-left))
           (more (test-case-process-list))
@@ -781,8 +782,8 @@ and `test-case-mode-line-info-position'."
     (process-put process 'test-case-tick (buffer-modified-tick test-buffer))
     (process-put process 'test-case-buffer test-buffer)
     (process-put process 'test-case-result-buffer result-buffer)
-    (process-put process 'test-case-failure-pattern
-                 (test-case-call-backend 'failure-pattern test-buffer))
+    (process-put process 'test-case-failure-patterns
+                 (test-case-call-backend 'failure-patterns test-buffer))
     (process-put process 'test-case-beg beg)
 
     (set-process-sentinel process 'test-case-process-sentinel)
@@ -988,6 +989,10 @@ Install this the following way:
     (test-case-result-add-markers (match-beginning 0) (match-end 0) nil
                                   file line col msg)))
 
+(defun test-case-propertize-keywords (keyword)
+  (while (re-search-forward (car keyword) end t)
+    (apply 'test-case-propertize-message (cdr keyword))))
+
 (defun test-case-parse-result (result-buffer keywords &optional beg end)
   (with-current-buffer result-buffer
     (save-excursion
@@ -996,8 +1001,7 @@ Install this the following way:
         (unless end (setq end (point-max)))
         (goto-char beg)
         (add-text-properties beg end 'test-case-file)
-        (while (re-search-forward (car keywords) end t)
-          (apply 'test-case-propertize-message (cdr keywords)))))))
+        (mapc 'test-case-propertize-keywords keywords)))))
 
 (defun test-case-follow-link (pos)
   "Follow the link at POS in an error buffer."
@@ -1249,7 +1253,7 @@ configured correctly.  The classpath is determined by
                      (test-case-grep test-case-junit-import-regexp)
                      (test-case-grep test-case-junit-extends-regexp)))
     ('command (test-case-junit-command))
-    ('failure-pattern (test-case-junit-failure-pattern))
+    ('failure-patterns (list (test-case-junit-failure-pattern)))
     ('font-lock-keywords test-case-junit-font-lock-keywords)))
 
 
@@ -1336,7 +1340,7 @@ configured correctly.  The classpath is determined by
                      t))
     ('command (test-case-simplespec-command))
     ('directory (test-case-simplespec-directory))
-    ('failure-pattern (test-case-simplespec-failure-pattern))
+    ('failure-patterns (list (test-case-simplespec-failure-pattern)))
     ('font-lock-keywords test-case-simplespec-font-lock-keywords)))
 
 
@@ -1372,8 +1376,13 @@ configured correctly.  The classpath is determined by
 
 (defun test-case-clojuretest-failure-pattern ()
   (let ((file (regexp-quote (file-name-nondirectory buffer-file-name))))
-    '("FAIL in\\s-+(.+?)\\s-+(\\(.+?\\):\\([0-9]+\\))\n.*"
-          1 2 nil nil 0)))
+    '("FAIL in ([^)]+) (\\([^:]+\\):\\([0-9]+\\))\n.*\n\\(\\s-*expected: .*\n\\s-*actual: .*\\)"
+      1 2 nil 0 3)))
+
+(defun test-case-clojuretest-error-pattern ()
+  (let ((file (regexp-quote (file-name-nondirectory buffer-file-name))))
+    (list (format "ERROR in .*\n.*\n\\(\\s-*expected: .*\n\\s-*actual: .*\\)[\0-\377[:nonascii:]]*?\n\s-*at[\0-\377[:nonascii:]]*?(\\(%s\\):\\([0-9]+\\))[\0-\377[:nonascii:]]*?\n\n" file)
+      2 3 nil 0 1)))
 
 (defun test-case-clojuretest-backend (command)
   "Clojure.test back-end for `test-case-mode'."
@@ -1385,7 +1394,8 @@ configured correctly.  The classpath is determined by
                      t))
     ('command (test-case-clojuretest-command))
     ('directory (test-case-clojuretest-directory))
-    ('failure-pattern (test-case-clojuretest-failure-pattern))
+    ('failure-patterns (list (test-case-clojuretest-failure-pattern)
+                             (test-case-clojuretest-error-pattern)))
     ('font-lock-keywords test-case-clojuretest-font-lock-keywords)))
 
 
@@ -1435,7 +1445,7 @@ configured correctly.  The classpath is determined by
                       (test-case-phpunit-find-test-class)
                       (test-case-localname buffer-file-name)))
     ('save t)
-    ('failure-pattern test-case-phpunit-failure-pattern)
+    ('failure-patterns (list test-case-phpunit-failure-pattern))
     ('font-lock-keywords test-case-phpunit-font-lock-keywords)))
 
 
@@ -1479,7 +1489,7 @@ configured correctly.  The classpath is determined by
                       test-case-ruby-arguments " "
                       (test-case-localname buffer-file-name)))
     ('save t)
-    ('failure-pattern test-case-ruby-failure-pattern)
+    ('failure-patterns (list test-case-ruby-failure-pattern))
     ('font-lock-keywords test-case-ruby-font-lock-keywords)))
 
 
@@ -1524,7 +1534,7 @@ configured correctly.  The classpath is determined by
     ('command (concat test-case-python-executable " "
                       (test-case-localname buffer-file-name)))
     ('save t)
-    ('failure-pattern (test-case-python-failure-pattern))
+    ('failure-patterns (list (test-case-python-failure-pattern)))
     ('font-lock-keywords test-case-python-font-lock-keywords)))
 
 
@@ -1584,7 +1594,7 @@ customize `test-case-cxxtest-executable-name-func'"
     ('name "CxxTest")
     ('supported (test-case-cxxtest-p))
     ('command (test-case-cxxtest-command))
-    ('failure-pattern (test-case-cxxtest-failure-pattern))
+    ('failure-patterns (list (test-case-cxxtest-failure-pattern)))
     ('font-lock-keywords test-case-cxxtest-font-lock-keywords)))
 
 
@@ -1642,7 +1652,7 @@ customize `test-case-cppunit-executable-name-func'"
     ('name "CppUnit")
     ('supported (test-case-cppunit-p))
     ('command (test-case-cppunit-command))
-    ('failure-pattern (test-case-cppunit-failure-pattern))
+    ('failure-patterns (list (test-case-cppunit-failure-pattern)))
     ('font-lock-keywords test-case-cppunit-font-lock-keywords)))
 
 (provide 'test-case-mode)
