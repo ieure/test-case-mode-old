@@ -1274,7 +1274,7 @@ configured correctly.  The classpath is determined by
   :type 'string)
 
 (defcustom test-case-simplespec-class-pattern
-  "class\\s-+\\([a-zA-Z0-9]+Spec\\)\\s-+"
+  "class\\s-+\\([a-zA-Z0-9]+Spec\\)\\b\\s-+"
   "The pattern to use to match SimpleSpec test classes."
   :group 'test-case
   :type 'regexp)
