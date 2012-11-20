@@ -690,8 +690,14 @@ and `test-case-mode-line-info-position'."
         (error "Test result buffer killed"))
 
       (with-current-buffer out-buffer
-        (insert-char ?= fill-column)
-        (newline))
+        (save-excursion
+          (save-restriction
+            (goto-char (point-max))
+            (when (not (= (line-beginning-position) (line-end-position)))
+              (goto-char (line-end-position))
+              (newline))
+            (insert-char ?= fill-column)
+            (newline))))
 
       (when (buffer-live-p test-buffer)
         (test-case-set-buffer-state
