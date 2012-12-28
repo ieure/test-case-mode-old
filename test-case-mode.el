@@ -1,12 +1,12 @@
 ;;; test-case-mode.el --- unit test front-end
 ;;
 ;; Copyright (C) 2009, 2012 Nikolaj Schumacher
-;; Copyright (C) 2009-2102 Ian Eure
+;; Copyright (C) 2009-2012 Ian Eure
 ;;
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
 ;; Author: Ian Eure <ian.eure gmail com>
 ;; Maintainer: Ian Eure <ian.eure gmail com>
-;; Version: 0.1.7
+;; Version: 0.1.8
 ;; Keywords: tools
 ;; URL: http://nschum.de/src/emacs/test-case-mode/
 ;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x
@@ -75,6 +75,10 @@
 ;; 2012-05-17 (0.1.7)
 ;;    Support SimpleSpec 0.6.0 & clojure.test. Allow multiple failure
 ;;    patterns.
+;;
+;; 2012-12-28 (0.1.8)
+;;    Fix copyright year. Autoload `test-case-run'. Add
+;;    `test-case-run-or-run-again'.
 ;;
 ;;
 ;;; Code:
@@ -848,6 +852,7 @@ Tests are run consecutively or concurrently according to
                                   (generate-new-buffer " *Test Run*"))
           (decf processes))))))
 
+;;;###autoload
 (defun test-case-run (&optional buffer)
   "Run the test in the current buffer.
 Calling this aborts all running tests.  To run multiple tests use
@@ -863,6 +868,17 @@ Calling this aborts all running tests.  To run multiple tests use
   "Run the latest test again."
   (interactive)
   (test-case-run-buffers test-case-last-run))
+
+;;;###autoload
+(defun test-case-run-or-run-again ()
+  "Run current or last test.
+
+   If in a test buffer, run tests in the current buffer. Otherwise,
+   run the last-run test again."
+  (interactive)
+  (if test-case-mode
+      (test-case-run)
+    (test-case-run-again)))
 
 (defun test-case-run-all ()
   "Run `test-case-run-buffers' on all tests currently visited by buffers."
