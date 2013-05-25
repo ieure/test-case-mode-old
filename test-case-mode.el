@@ -6,7 +6,7 @@
 ;; Version: 0.1
 ;; Keywords: tools
 ;; URL: http://nschum.de/src/emacs/test-case-mode/
-;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x
+;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x, GNU Emacs 24.x
 ;; Package-Requires: ((fringe-helper "0.1.1"))
 ;;
 ;; This file is NOT part of GNU Emacs.
