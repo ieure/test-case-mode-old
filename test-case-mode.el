@@ -1511,7 +1511,8 @@ name as the test, but without the extension.  If it doesn't, customize
 
 (defun test-case-ert-p ()
   (and (derived-mode-p 'emacs-lisp-mode)
-       (test-case-grep "([ \t]*ert-deftest")))
+       (test-case-grep "([ \t]*ert-deftest")
+       (not (test-case-grep ";;; ert.el --- Emacs Lisp Regression Testing"))))
 
 (defun test-case-ert-command ()
   (format "%s -batch -l ert.el -L %s -l %s -f ert-run-tests-batch-and-exit"
