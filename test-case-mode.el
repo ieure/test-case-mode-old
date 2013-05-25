@@ -82,8 +82,12 @@
   :group 'tools)
 
 (defcustom test-case-backends
-  '(test-case-junit-backend test-case-ruby-backend test-case-cxxtest-backend
-    test-case-cppunit-backend test-case-gtest-backend test-case-python-backend
+  `(test-case-junit-backend
+    test-case-ruby-backend
+    test-case-cxxtest-backend
+    test-case-cppunit-backend
+    test-case-gtest-backend
+    test-case-python-backend
     test-case-ert-backend)
   "*Test case backends.
 Each function in this list is called with a command, which is one of these:
@@ -183,28 +187,28 @@ See `compilation-context-lines'."
 
 (defface test-case-mode-line-success
   '((t (:inherit mode-line-buffer-id
-        :background "dark olive green"
-        :foreground "black")))
+                 :background "dark olive green"
+                 :foreground "black")))
   "Face used for displaying a successful test result."
   :group 'test-case)
 
 (defface test-case-mode-line-success-modified
   '((t (:inherit test-case-mode-line-success
-        :foreground "orange")))
+                 :foreground "orange")))
   "Face used for displaying a successful test result in a modified buffer."
   :group 'test-case)
 
 (defface test-case-mode-line-failure
   '((t (:inherit mode-line-buffer-id
-        :background "firebrick"
-        :foreground "wheat")))
+                 :background "firebrick"
+                 :foreground "wheat")))
   "Face used for displaying a failed test result."
   :group 'test-case)
 
 (defface test-case-mode-line-undetermined
   '((t (:inherit mode-line-buffer-id
-        :background "orange"
-        :foreground "black")))
+                 :background "orange"
+                 :foreground "black")))
   "Face used for displaying a unknown test result."
   :group 'test-case)
 
@@ -716,13 +720,13 @@ and `test-case-mode-line-info-position'."
             (file-name (process-get proc 'test-case-file))
             (search-func (process-get proc 'test-case-search-func))
             (inhibit-read-only t))
-          (if (eq out-buffer result-buffer)
-              (goto-char (process-get proc 'test-case-beg))
-            (goto-char (test-case-copy-result out-buffer result-buffer)))
-          (when keywords
-            (while (re-search-forward (car keywords) nil t)
-              (apply 'test-case-propertize-message
-                     file-name search-func (cdr keywords))))))))
+        (if (eq out-buffer result-buffer)
+            (goto-char (process-get proc 'test-case-beg))
+          (goto-char (test-case-copy-result out-buffer result-buffer)))
+        (when keywords
+          (while (re-search-forward (car keywords) nil t)
+            (apply 'test-case-propertize-message
+                   file-name search-func (cdr keywords))))))))
 
 (defun test-case--skip-dead-process-buffers (next)
   (while (and next
@@ -765,8 +769,8 @@ and `test-case-mode-line-info-position'."
           (insert (format "Test run: %s\n\n"
                           (setq command
                                 (test-case-call-backend 'command test-buffer))))
-      (error (insert (error-message-string err) "\n")
-             (setq command "false"))))
+        (error (insert (error-message-string err) "\n")
+               (setq command "false"))))
 
     (setq process (start-process "test-case-process" out-buffer
                                  shell-file-name shell-command-switch command))
@@ -948,8 +952,10 @@ Install this the following way:
               (end-of-line)
               (setq end-marker (copy-marker (point))))))
         (add-text-properties beg end
-                             `(test-case-beg-marker ,beg-marker
-                               test-case-end-marker ,end-marker))
+                             `(test-case-beg-marker
+                               ,beg-marker
+                               test-case-end-marker
+                               ,end-marker))
         (test-case-insert-failure-overlay beg-marker end-marker buffer
                                           props)))))
 
@@ -959,8 +965,8 @@ Install this the following way:
     (test-case-result-add-markers beg end t
                                   (get-text-property pos 'test-case-props))))
 
-(defun test-case-propertize-message (file-name locate-func
-                                     &optional file line col link msg test)
+(defun test-case-propertize-message
+  (file-name locate-func &optional file line col link msg test)
 
   (test-case--add-text-properties-for-match file '(face test-case-result-file))
   (test-case--add-text-properties-for-match line '(face test-case-result-line))
@@ -1222,7 +1228,7 @@ Additionally the CLASSPATH environment variable is used."
     (list (concat "\\(" test-case-junit-assertion-re "\\)?"
                   test-case-junit-backtrace-re-1 file
                   test-case-junit-backtrace-re-2)
-      5 6 nil 4 2)))
+          5 6 nil 4 2)))
 
 (defvar test-case-junit-import-regexp
   "import\\s +junit\\.framework\\.\\(TestCase\\|\\*\\)")
@@ -1304,8 +1310,8 @@ configured correctly.  The classpath is determined by
          "\\_<assert" (regexp-opt '("AlmostEqual" "Equal" "False" "Raises"
                                     "NotAlmostEqual" "NotEqual" "True" "_") t)
          "\\|fail" (regexp-opt '("" "If" "IfAlmostEqual" "IfEqual" "Unless"
-                                    "UnlessAlmostEqual" "UnlessEqual"
-                                    "UnlessRaises" "ureException"))
+                                 "UnlessAlmostEqual" "UnlessEqual"
+                                 "UnlessRaises" "ureException"))
          "\\_>")
        (0 'test-case-assertion prepend)))))
 
