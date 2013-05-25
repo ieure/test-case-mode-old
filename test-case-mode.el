@@ -3,7 +3,7 @@
 ;; Copyright (C) 2009, 2011, 2013 Nikolaj Schumacher
 ;;
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
-;; Version: 0.1
+;; Version: 1.0
 ;; Keywords: tools
 ;; URL: http://nschum.de/src/emacs/test-case-mode/
 ;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x, GNU Emacs 24.x
@@ -59,6 +59,7 @@
 ;;
 ;;; Change Log:
 ;;
+;; 2013-05-25 (1.0)
 ;;    Some refactoring.
 ;;    Added support for gtest (google-test).
 ;;    Added support for ERT (Emacs Lisp Regression Testing).
