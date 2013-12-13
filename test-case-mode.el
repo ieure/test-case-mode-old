@@ -1162,66 +1162,18 @@ CLASS and NAMESPACE need to be `regexp-quote'd."
 
 ;;; junit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defcustom test-case-junit-java-executable (executable-find "java")
-  "The Java executable used to run JUnit tests."
+(defcustom test-case-junit-mvn-executable (executable-find "mvn")
+  "The Maven executable used to run JUnit tests."
   :group 'test-case
   :type 'file)
 
-(defcustom test-case-junit-java-arguments "-ea"
+(defcustom test-case-junit-mvn-arguments "-q"
   "The command line arguments used to run JUnit tests."
   :group 'test-case
   :type 'string)
 
-(defcustom test-case-junit-classpath
-  '(test-case-junit-guess-root
-    test-case-junit-jde-classpath
-    test-case-junit-classpath-from-env)
-  "*Directories that make up the CLASSPATH for JUnit tests.
-Instead of directories, each element can also be a function returning a
-CLASSPATH for the current buffer."
-  :group 'test-case
-  :type '(repeat (choice (function :tag "Function")
-                         (directory :tag "Directory"))))
-
-(defun test-case-junit-build-classpath ()
-  (mapconcat (lambda (entry) (or (if (stringp entry) entry (funcall entry)) ""))
-             test-case-junit-classpath
-             ":"))
-
-(defun test-case-junit-classpath-from-env ()
-  "Return the value of the CLASSPATH environment variable."
-  (getenv "CLASSPATH"))
-
 (defun test-case-junit-grep-package ()
   (test-case-grep "package\\s +\\([[:alnum:].]+\\)\\s *;"))
-
-(defun test-case-junit-guess-root ()
-  "Guess the classpath for a JUnit test by looking at the package.
-If the classpath ends in \"src/\", the same path is added again using \"bin/\".
-Additionally the CLASSPATH environment variable is used."
-  (let ((package (test-case-junit-grep-package))
-        (path (nreverse (cons "" (split-string buffer-file-name "/" t))))
-        root)
-    (when package
-      (setq path (nthcdr (1+ (length (split-string package "\\." t))) path))
-      (or (and (equal (car path) "src")
-               (setq root (mapconcat 'identity
-                                     (reverse (cons "bin" (cdr path))) "/"))
-               (file-exists-p root)
-               root)
-          (mapconcat 'identity (nreverse path) "/")))))
-
-(defun test-case-junit-jde-classpath ()
-  (when (derived-mode-p 'jde-mode)
-    (with-no-warnings
-      (let ((classpath (if jde-compile-option-classpath
-                           jde-compile-option-classpath
-                         (jde-get-global-classpath)))
-            (symbol (if 'jde-compile-option-classpath
-                        'jde-compile-option-classpath
-                      'jde-global-classpath)))
-        (when classpath
-          (jde-build-classpath classpath symbol))))))
 
 (defun test-case-junit-class ()
   (let ((package (test-case-junit-grep-package))
@@ -1231,10 +1183,13 @@ Additionally the CLASSPATH environment variable is used."
         (concat package "." class)
       class)))
 
+(defun test-case-junit-directory ()
+  (locate-dominating-file (buffer-file-name) "pom.xml"))
+
 (defun test-case-junit-command ()
-  (format "%s %s -classpath %s org.junit.runner.JUnitCore %s"
-          test-case-junit-java-executable test-case-junit-java-arguments
-          (test-case-junit-build-classpath) (test-case-junit-class)))
+  (format "%s %s test -Dtest=%s"
+          test-case-junit-mvn-executable test-case-junit-mvn-arguments
+          (test-case-junit-class)))
 
 (defvar test-case-junit-font-lock-keywords
   (eval-when-compile
@@ -1279,6 +1234,7 @@ configured correctly.  The classpath is determined by
                      (test-case-grep test-case-junit-import-regexp)
                      (test-case-grep test-case-junit-extends-regexp)))
     ('command (test-case-junit-command))
+    ('directory (test-case-junit-directory))
     ('failure-patterns (list (test-case-junit-failure-pattern)))
     ('font-lock-keywords test-case-junit-font-lock-keywords)))
 
