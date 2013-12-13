@@ -505,7 +505,7 @@ It's value represents the test case type.")
 (defun test-case-detect-backend ()
   (when buffer-file-name
     (dolist (backend test-case-backends)
-      (when (funcall backend 'supported)
+      (when (ignore-errors (funcall backend 'supported))
         (setq test-case-backend backend
               test-case-lighter (concat " " (test-case-call-backend 'name)))
         (return t)))))
