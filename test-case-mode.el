@@ -1263,10 +1263,10 @@ Additionally the CLASSPATH environment variable is used."
       5 6 nil 4 2)))
 
 (defvar test-case-junit-import-regexp
-  "import\\s +junit\\.framework\\.\\(TestCase\\|\\*\\)")
+  "import\\s +junit\\.framework\\.\\(TestCase\\|TestSuite\\|\\*\\)")
 
 (defvar test-case-junit-extends-regexp
-  "extends\\s +TestCase")
+  "extends\\s +\\(TestCase\\|TestSuite\\)")
 
 (defun test-case-junit-backend (command)
   "JUnit back-end for `test-case-mode'.
