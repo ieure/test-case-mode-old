@@ -1358,7 +1358,7 @@ configured correctly.  The classpath is determined by
     (unless ns
       (error "This doesn't seem to be Clojure code."))
     (format "%s test %s"
-            test-case-clojuretest-lein-executable (clojure-find-ns))))
+            test-case-clojuretest-lein-executable ns)))
 
 (defun test-case-clojuretest-directory ()
   (locate-dominating-file (buffer-file-name) "project.clj"))
