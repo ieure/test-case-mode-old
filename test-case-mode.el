@@ -1501,11 +1501,22 @@ configured correctly.  The classpath is determined by
 (defvar test-case-python-font-lock-keywords
   (eval-when-compile
     `((,(concat
-         "\\_<assert" (regexp-opt '("AlmostEqual" "Equal" "False" "Raises"
-                                    "NotAlmostEqual" "NotEqual" "True" "_") t)
-         "\\|fail" (regexp-opt '("" "If" "IfAlmostEqual" "IfEqual" "Unless"
-                                    "UnlessAlmostEqual" "UnlessEqual"
-                                    "UnlessRaises" "ureException"))
+         "\\_<assert" (regexp-opt '("Equal" "NotEqual" "True" "False" "Is"
+                                    "IsNot" "IsNone" "IsNotNone" "In" "NotIn"
+                                    "IsInstance" "NotIsInstance" "Raises"
+                                    "RaisesRegex" "Warns" "WarnsRegex"
+                                    "AlmostEqual" "NotAlmostEqual" "Greater"
+                                    "GreaterEqual" "Less" "LessEqual" "Regex"
+                                    "NotRegex" "CountEqual" "MultiLineEqual"
+                                    "SequenceEqual" "ListEqual" "TupleEqual"
+                                    "SetEqual" "DictEqual" "RegexpMatches"
+                                    "NotRegexpMatches" "ItemsEqual"
+                                    "DictContainsSubset" "Equals" "NotEquals"
+                                    "_" "AlmostEquals" "NotAlmostEquals"
+                                    "RegexpMatches" "RaisesRegexp") t)
+         "\\|fail" (regexp-opt '("" "UnlessEqual" "IfEqual" "Unless" "If"
+                                 "UnlessRaises" "UnlessAlmostEqual" 
+                                 "IfAlmostEqual"))
          "\\_>")
        (0 'test-case-assertion prepend)))))
 
