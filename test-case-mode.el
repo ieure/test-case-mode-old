@@ -1489,14 +1489,22 @@ configured correctly.  The classpath is determined by
 ;; pyunit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom test-case-python-executable (executable-find "python")
-  "The Python executable used to run Python tests."
+  "The Python executable used to run Python tests.
+Used if either test-case-detect-shebang is nil or no shebang is found."
   :group 'test-case
   :type 'file)
+
+(defcustom test-case-python-detect-shebang t
+  "Detect the Python executable from shebang."
+  :group 'test-case
+  :type 'boolean)
 
 (defcustom test-case-python-arguments ""
   "The command line arguments used to run Python tests."
   :group 'test-case
   :type 'string)
+
+(defvar-local test-case-python-executable-local test-case-python-executable)
 
 (defvar test-case-python-font-lock-keywords
   (eval-when-compile
@@ -1528,14 +1536,27 @@ configured correctly.  The classpath is determined by
                   )
           2 3 nil nil 4)))
 
+(defun test-case-python-find-executable ()
+  (if test-case-python-detect-shebang
+    (save-excursion
+      (goto-char 0)
+      (if (re-search-forward auto-mode-interpreter-regexp 50 t)
+          (progn (setq test-case-python-executable-local (executable-find (buffer-substring (match-beginning 2)
+                                                                                            (match-end 2))))
+                 (unless test-case-python-executable-local (setq test-case-python-executable-local
+                                                                 test-case-python-executable)))
+        (setq test-case-python-executable-local test-case-python-executable)))
+    (setq test-case-python-executable-local test-case-python-executable)))
+
 (defun test-case-python-backend (command)
   "Python Test::Unit back-end for `test-case-mode'."
   (case command
     ('name "PyUnit")
-    ('supported (and (derived-mode-p 'python-mode)
-                     (or (test-case-grep "\\_<import\s+unittest\\_>")
-                         (test-case-grep "\\_<import\s+nose\\_>"))))
-    ('command (concat test-case-python-executable " "
+    ('supported (prog1 (and (derived-mode-p 'python-mode)
+                            (or (test-case-grep "\\_<import\s+unittest\\_>")
+                                (test-case-grep "\\_<import\s+nose\\_>")))
+                  (test-case-python-find-executable)))
+    ('command (concat test-case-python-executable-local " "
                       (test-case-localname buffer-file-name)))
     ('save t)
     ('failure-patterns (list (test-case-python-failure-pattern)))
