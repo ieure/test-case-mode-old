@@ -1,7 +1,7 @@
 ;;; test-case-mode.el --- unit test front-end
 ;;
-;; Copyright (C) 2009, 2012 Nikolaj Schumacher
-;; Copyright (C) 2009-2012 Ian Eure
+;; Copyright (C) 2009-2014 Ian Eure
+;; Copyright (C) 2009 Nikolaj Schumacher
 ;;
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
 ;; Author: Ian Eure <ian.eure gmail com>
