@@ -1286,7 +1286,7 @@ configured correctly.  The classpath is determined by
             (c-concat-separated test-classes ","))))
 
 (defun test-case-simplespec-directory ()
-  (locate-dominating-file (buffer-file-name) "pom.xml"))
+  (locate-dominating-file (buffer-file-name) ".git"))
 
 (defvar test-case-simplespec-font-lock-keywords
   (eval-when-compile
