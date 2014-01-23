@@ -6,7 +6,7 @@
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
 ;; Author: Ian Eure <ian.eure gmail com>
 ;; Maintainer: Ian Eure <ian.eure gmail com>
-;; Version: 0.1.8
+;; Version: 0.1.9
 ;; Keywords: tools
 ;; URL: http://nschum.de/src/emacs/test-case-mode/
 ;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x
