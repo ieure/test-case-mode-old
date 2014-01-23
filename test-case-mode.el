@@ -1515,7 +1515,7 @@ configured correctly.  The classpath is determined by
                                     "_" "AlmostEquals" "NotAlmostEquals"
                                     "RegexpMatches" "RaisesRegexp") t)
          "\\|fail" (regexp-opt '("" "UnlessEqual" "IfEqual" "Unless" "If"
-                                 "UnlessRaises" "UnlessAlmostEqual" 
+                                 "UnlessRaises" "UnlessAlmostEqual"
                                  "IfAlmostEqual"))
          "\\_>")
        (0 'test-case-assertion prepend)))))
