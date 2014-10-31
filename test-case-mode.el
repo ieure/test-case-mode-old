@@ -340,10 +340,10 @@ See `compilation-context-lines'."
                       :data ,(format "/* XPM */
 static char * data[] = {
 \"18 13 4 1\",
-\"  c None\",
-\". c %s\",
-\"x c %s\",
-\"+ c %s\",
+\" 	c None\",
+\".	c %s\",
+\"x	c %s\",
+\"+	c %s\",
 \"                  \",
 \"       +++++      \",
 \"      +.....+     \",
