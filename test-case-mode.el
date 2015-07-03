@@ -1,15 +1,16 @@
 ;;; test-case-mode.el --- unit test front-end
 ;;
 ;; Copyright (C) 2009-2015 Ian Eure
-;; Copyright (C) 2009 Nikolaj Schumacher
+;; Copyright (C) 2009, 2011, 2013 Nikolaj Schumacher
 ;;
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
 ;; Author: Ian Eure <ian.eure gmail com>
 ;; Maintainer: Ian Eure <ian.eure gmail com>
-;; Version: 0.1.9
+;; Version: 1.0
 ;; Keywords: tools
 ;; URL: http://nschum.de/src/emacs/test-case-mode/
-;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x
+;; Compatibility: GNU Emacs 22.x, GNU Emacs 23.x, GNU Emacs 24.x
+;; Package-Requires: ((fringe-helper "0.1.1"))
 ;;
 ;; This file is NOT part of GNU Emacs.
 ;;
@@ -29,8 +30,8 @@
 ;;; Commentary:
 ;;
 ;; `test-case-mode' is a minor mode for running unit tests.  It is extensible
-;; and currently comes with back-ends for JUnit, CxxTest, CppUnit, Python,
-;; Ruby, Scala (with SimpleSpec), and Clojure.
+;; and currently comes with back-ends for JUnit, CxxTest, CppUnit, gtest,
+;; Python, Ruby, Scala (with SimpleSpec), and Clojure.
 ;;
 ;; The back-ends probably need some more path options to work correctly.
 ;; Please let me know, as I'm not an expert on all of them.
@@ -61,25 +62,29 @@
 ;;
 ;;; Change Log:
 ;;
-;; 2009-03-30 (0.1)
-;;    Initial release.
+;; 2013-05-25 (1.0)
+;;    Some refactoring.
+;;    Added support for gtest (google-test).
+;;    Added support for ERT (Emacs Lisp Regression Testing).
 ;;
-;; 2012-02-01 (0.1.3)
-;;    PHPUnit, Tramp, and nosetests support.
+;; 2012-12-28 (0.1.8)
+;;    Fix copyright year. Autoload `test-case-run'. Add
+;;    `test-case-run-or-run-again'.
+;;
+;; 2012-05-17 (0.1.7)
+;;    Support SimpleSpec 0.6.0 & clojure.test. Allow multiple failure
+;;    patterns.
 ;;
 ;; 2012-04-28 (0.1.5)
 ;;    Allow tests to run from other directories. Add SimpleSpec
 ;;    backend. Fix some bugs that prevented tests from running. Try
 ;;    enabling T-C-M when test-case-run is called.
 ;;
-;; 2012-05-17 (0.1.7)
-;;    Support SimpleSpec 0.6.0 & clojure.test. Allow multiple failure
-;;    patterns.
+;; 2012-02-01 (0.1.3)
+;;    PHPUnit, Tramp, and nosetests support.
 ;;
-;; 2012-12-28 (0.1.8)
-;;    Fix copyright year. Autoload `test-case-run'. Add
-;;    `test-case-run-or-run-again'.
-;;
+;; 2009-03-30 (0.1)
+;;    Initial release.
 ;;
 ;;; Code:
 
@@ -89,7 +94,7 @@
 (require 'fringe-helper nil t)
 
 (dolist (err '("^test-case-mode not enabled$" "^Test not recognized$"
-               "^Moved back before first failure$" "^Moved past last failure$"
+               "^Moved \\(back before fir\\|past la\\)st failure$"
                "^Test result buffer killed$"))
   (add-to-list 'debug-ignored-errors err))
 
@@ -102,8 +107,10 @@
     test-case-ruby-backend
     test-case-cxxtest-backend
     test-case-cppunit-backend
+    test-case-gtest-backend
     test-case-phpunit-backend
     test-case-python-backend
+    test-case-ert-backend
     test-case-simplespec-backend
     test-case-clojuretest-backend)
   "*Test case backends.
@@ -121,12 +128,17 @@ buffer.
 current buffer.  They should be suitable for passing to
 `font-lock-add-keywords'.
 
-'failure-patterns: The function should return a list of lists. The
-first element of the nested list(s) must be the regular expression
-that matches the failure description as returned by the command.  The
-next elements should be the sub-expression numbers that match file
-name, line, column, name plus line (a clickable link) and error
-message. Each of these can be nil."
+'failure-pattern: The function should return a list.  The first element
+must be the regular expression that matches the failure description as
+returned by the command.  The next elements should be the sub-expression
+numbers that match file name, line, column, name plus line (a clickable link),
+error message, and test-name. Each of these can be nil.
+
+'failure-locate-func: If 'failure-pattern can't match a line number, the
+function may return a function to search for the test-name in the buffer.
+The function takes the test-name (from 'failure-pattern) as one argument
+and should return beginning and end points as car and cdr (like
+`test-case-locate')."
   :group 'test-case
   :type '(repeat function))
 
@@ -196,32 +208,32 @@ See `compilation-context-lines'."
   :type '(choice integer (const :tag "No window scrolling" nil)))
 
 
-;;; faces ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; faces ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defface test-case-mode-line-success
   '((t (:inherit mode-line-buffer-id
-        :background "dark olive green"
-        :foreground "black")))
+                 :background "dark olive green"
+                 :foreground "black")))
   "Face used for displaying a successful test result."
   :group 'test-case)
 
 (defface test-case-mode-line-success-modified
   '((t (:inherit test-case-mode-line-success
-        :foreground "orange")))
+                 :foreground "orange")))
   "Face used for displaying a successful test result in a modified buffer."
   :group 'test-case)
 
 (defface test-case-mode-line-failure
   '((t (:inherit mode-line-buffer-id
-        :background "firebrick"
-        :foreground "wheat")))
+                 :background "firebrick"
+                 :foreground "wheat")))
   "Face used for displaying a failed test result."
   :group 'test-case)
 
 (defface test-case-mode-line-undetermined
   '((t (:inherit mode-line-buffer-id
-        :background "orange"
-        :foreground "black")))
+                 :background "orange"
+                 :foreground "black")))
   "Face used for displaying a unknown test result."
   :group 'test-case)
 
@@ -340,10 +352,10 @@ See `compilation-context-lines'."
                       :data ,(format "/* XPM */
 static char * data[] = {
 \"18 13 4 1\",
-\" 	c None\",
-\".	c %s\",
-\"x	c %s\",
-\"+	c %s\",
+\"  c None\",
+\". c %s\",
+\"x c %s\",
+\"+ c %s\",
 \"                  \",
 \"       +++++      \",
 \"      +.....+     \",
@@ -475,8 +487,12 @@ This assumes that no test is still running."
 
         (run-hook-with-args 'test-case-state-change-hook old-state state)))))
 
+<<<<<<< HEAD
 
 ;;; global mode ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+=======
+;;; global mode ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+>>>>>>> upstream-master
 
 (defvar test-case-global-mode-map (make-sparse-keymap)
   "Keymap used by `test-case-global-mode'.")
@@ -677,13 +693,21 @@ and `test-case-mode-line-info-position'."
       (unless quiet
         (message "Test run aborted")))))
 
+(defun test-case-localname (path)
+  (if (tramp-tramp-file-p path)
+      (with-parsed-tramp-file-name path remote remote-localname)
+    path))
+
+(defun test-case-run-directory (test-buffer)
+  (or (unwind-protect (test-case-call-backend 'directory test-buffer) nil)
+      (file-name-directory (buffer-file-name test-buffer))))
+
 (defun test-case-process-sentinel (proc msg)
   (when (eq (process-status proc) 'exit)
     (let ((out-buffer (process-buffer proc))
           (test-buffer (process-get proc 'test-case-buffer))
           (result-buffer (process-get proc 'test-case-result-buffer))
-          (keywords (process-get proc 'test-case-failure-patterns))
-          (failure (/= 0 (process-exit-status proc)))
+          (failure-p (/= 0 (process-exit-status proc)))
           (next (pop test-case-current-run-left))
           (more (test-case-process-list))
           (inhibit-read-only t))
@@ -693,115 +717,128 @@ and `test-case-mode-line-info-position'."
       (unless (buffer-live-p out-buffer)
         (error "Test result buffer killed"))
 
-      (with-current-buffer out-buffer
-        (save-excursion
-          (save-restriction
-            (goto-char (point-max))
-            (when (not (= (line-beginning-position) (line-end-position)))
-              (goto-char (line-end-position))
-              (newline))
-            (insert-char ?= fill-column)
-            (newline))))
+      (test-case--fill-line ?< out-buffer)
 
-      (when (buffer-live-p test-buffer)
-        (test-case-set-buffer-state
-         (if failure
-             'failure
-           (if (eq (process-get proc 'test-case-tick)
-                   (buffer-modified-tick test-buffer))
-               'success
-           'success-modified))
-         test-buffer))
+      (test-case--update-buffer-state proc failure-p test-buffer)
 
       ;; Update the results.
-      (when keywords
-        (if (eq out-buffer result-buffer)
-            (test-case-parse-result result-buffer keywords
-                                    (process-get proc 'test-case-beg))
-          (let ((beg (with-current-buffer result-buffer (point-max))))
-            (test-case-copy-result out-buffer result-buffer)
-            (test-case-parse-result result-buffer keywords beg)))
+      (test-case--parse-result proc result-buffer out-buffer)
 
-        (when (and failure test-case-abort-on-first-failure)
+      (when failure-p
+
+        (when test-case-abort-on-first-failure
           (test-case-abort t)
           (setq more nil
-                next nil)))
+                next nil))
 
-      (when failure
         (setq next-error-last-buffer result-buffer)
         (or (not test-case-display-results-on-failure)
             (eq test-case-global-state 'running-failure)
-            (when (not (get-buffer-window result-buffer t))
-              (display-buffer result-buffer)))
+            (display-buffer result-buffer))
         (when (or next more)
           (unless (eq test-case-global-state 'running-failure)
             (test-case-set-global-state 'running-failure)
             (test-case-echo-state 'running-failure))))
 
-      ;; Remove dead buffers
-      (while (and next
-                  (not (and (buffer-live-p next)
-                            (buffer-local-value 'test-case-mode next))))
-        (setq next (pop test-case-current-run-left)))
+      (setq next (test-case--skip-dead-process-buffers next))
 
       (if next
-          ;; continue
-          (if (eq out-buffer result-buffer)
-              ;; linear
-              (test-case-run-internal next result-buffer out-buffer)
-            ;; parallel, re-use out-buffer
-            (with-current-buffer out-buffer
-              (let ((inhibit-read-only t))
-                (erase-buffer)
-                (test-case-run-internal next result-buffer out-buffer))))
-        ;; No more work to do.
-        (unless (eq out-buffer result-buffer)
-          (kill-buffer out-buffer))
+          (test-case--run-next-test out-buffer result-buffer next)
+        (test-case--cleanup-process result-buffer out-buffer)
         (unless more
-          ;; all done
-          (test-case-set-global-state (test-case-calculate-global-state))
-          (test-case-echo-state
-           (test-case-calculate-global-state test-case-current-run)))))))
+          (test-case--cleanup-all))))))
 
-(defun test-case-localname (path)
-  (if (tramp-tramp-file-p path)
-      (with-parsed-tramp-file-name path remote remote-localname)
-      path))
+(defun test-case--update-buffer-state (proc failure-p test-buffer)
+  (when (buffer-live-p test-buffer)
+    (test-case-set-buffer-state
+     (if failure-p
+         'failure
+       (if (eq (process-get proc 'test-case-tick)
+               (buffer-modified-tick test-buffer))
+           'success
+         'success-modified))
+     test-buffer)))
 
-(defun test-case-run-directory (test-buffer)
-  (or (unwind-protect (test-case-call-backend 'directory test-buffer) nil)
-      (file-name-directory (buffer-file-name test-buffer))))
+(defun test-case--parse-result (proc result-buffer out-buffer)
+  (with-current-buffer result-buffer
+    (save-excursion
+      (let ((keywords (process-get proc 'test-case-failure-pattern))
+            (file-name (process-get proc 'test-case-file))
+            (search-func (process-get proc 'test-case-search-func))
+            (inhibit-read-only t))
+        (if (eq out-buffer result-buffer)
+            (goto-char (process-get proc 'test-case-beg))
+          (goto-char (test-case-copy-result out-buffer result-buffer)))
+        (when keywords
+          (while (re-search-forward (car keywords) nil t)
+            (apply 'test-case-propertize-message
+                   file-name search-func (cdr keywords))))))))
+
+(defun test-case--skip-dead-process-buffers (next)
+  (while (and next
+              (not (and (buffer-live-p next)
+                        (buffer-local-value 'test-case-mode next))))
+    (setq next (pop test-case-current-run-left)))
+  next)
+
+(defun test-case--run-next-test (result-buffer process-out-buffer next)
+  (unless (eq process-out-buffer result-buffer)
+    (test-case--erase-buffer process-out-buffer))
+  (test-case-run-internal next result-buffer process-out-buffer))
+
+(defun test-case--erase-buffer (buffer)
+  (with-current-buffer buffer
+    (let ((inhibit-read-only t))
+      (erase-buffer))))
+
+(defun test-case--cleanup-process (result-buffer out-buffer)
+  (unless (eq out-buffer result-buffer)
+    (kill-buffer out-buffer)))
+
+(defun test-case--cleanup-all ()
+  (test-case-set-global-state (test-case-calculate-global-state))
+  (test-case-echo-state
+   (test-case-calculate-global-state test-case-current-run)))
 
 (defun test-case-run-internal (test-buffer result-buffer &optional out-buffer)
-  (let ((inhibit-read-only t)
-        (default-directory (test-case-run-directory test-buffer))
-        command beg process)
+  (let* ((file-name (buffer-file-name test-buffer))
+         (default-directory (test-case-run-directory test-buffer))
+         (inhibit-read-only t)
+         command beg process)
 
     (unless out-buffer (setq out-buffer result-buffer))
 
     (with-current-buffer out-buffer
-      (goto-char (setq beg (point-max)))
-      (insert-char ?= fill-column)
-      (newline)
+      (setq beg (point-max))
+      (test-case--fill-line ?>)
       (condition-case err
           (insert (format "Test run: %s\n\n"
                           (setq command
                                 (test-case-call-backend 'command test-buffer))))
-      (error (insert (error-message-string err) "\n")
-             (setq command "false"))))
+        (error (insert (error-message-string err) "\n")
+               (setq command "false"))))
 
-    (setq process (start-file-process "test-case-process" out-buffer
+    (setq process (start-process "test-case-process" out-buffer
                                  shell-file-name shell-command-switch command))
     (set-process-query-on-exit-flag process nil)
     (process-put process 'test-case-tick (buffer-modified-tick test-buffer))
     (process-put process 'test-case-buffer test-buffer)
+    (process-put process 'test-case-file file-name)
     (process-put process 'test-case-result-buffer result-buffer)
-    (process-put process 'test-case-failure-patterns
-                 (test-case-call-backend 'failure-patterns test-buffer))
+    (process-put process 'test-case-failure-pattern
+                 (test-case-call-backend 'failure-pattern test-buffer))
+    (process-put process 'test-case-search-func
+                 (test-case-call-backend 'failure-locate-func test-buffer))
     (process-put process 'test-case-beg beg)
 
     (set-process-sentinel process 'test-case-process-sentinel)
     t))
+
+(defun test-case--fill-line (char &optional buffer)
+  (with-current-buffer (or buffer (current-buffer))
+    (goto-char (point-max))
+    (insert-char char (window-width))
+    (newline)))
 
 (defun test-case-run-buffers (buffers)
   "Run the tests visited by BUFFERS.
@@ -927,7 +964,7 @@ Install this the following way:
         (switch-to-buffer buffer)
       (message "No result buffer found"))))
 
-(defun test-case-insert-failure-overlay (beg end buffer msg)
+(defun test-case-insert-failure-overlay (beg end buffer props)
   "Insert an overlay marking a failure between BEG and END in BUFFER."
   (with-current-buffer buffer
     (and (fboundp 'fringe-helper-insert-region)
@@ -940,94 +977,81 @@ Install this the following way:
                test-case-error-overlays))
     (push (make-overlay beg end) test-case-error-overlays)
     (overlay-put (car test-case-error-overlays) 'face 'test-case-failure)
-    (overlay-put (car test-case-error-overlays) 'help-echo msg)
-    (overlay-put (car test-case-error-overlays) 'test-case-message msg)))
+    (let ((msg (plist-get props :message)))
+      (overlay-put (car test-case-error-overlays) 'help-echo msg)
+      (overlay-put (car test-case-error-overlays) 'test-case-message msg))))
 
 (defun test-case-remove-failure-overlays (buffer)
   "Remove all overlays added by `test-case-insert-failure-overlay' in BUFFER."
   (with-current-buffer buffer
     (mapc 'delete-overlay test-case-error-overlays)))
 
-(defun test-case-result-add-markers (beg end find-file-p file line col msg)
-  (let ((buffer (if find-file-p
-                    (find-file-noselect file)
-                  (find-buffer-visiting file)))
-        (inhibit-read-only t)
-        beg-marker end-marker)
-    (when buffer
+(defun test-case-result-add-markers (beg end find-file-p props)
+  (let* ((file (plist-get props :file))
+         (line (plist-get props :line))
+         (test (plist-get props :test))
+         (locate-func (plist-get props :locate-func))
+         (buffer (when file
+                   (if find-file-p
+                       (find-file-noselect file)
+                     (find-buffer-visiting file))))
+         (inhibit-read-only t)
+         beg-marker end-marker)
+    (when (and buffer (or line locate-func))
       (save-match-data
         (with-current-buffer buffer
           (save-excursion
-            (goto-line line)
-            (back-to-indentation)
-            (setq beg-marker (copy-marker (point)))
-            (end-of-line)
-            (setq end-marker (copy-marker (point)))))
+            (goto-char (point-min))
+            (if locate-func
+                (let ((match (funcall locate-func test)))
+                  (setq beg-marker (copy-marker (car match))
+                        end-marker (copy-marker (cdr match))))
+              (forward-line (1- line))
+              (back-to-indentation)
+              (setq beg-marker (copy-marker (point)))
+              (end-of-line)
+              (setq end-marker (copy-marker (point))))))
         (add-text-properties beg end
-                             `(test-case-beg-marker ,beg-marker
-                               test-case-end-marker ,end-marker))
-        (test-case-insert-failure-overlay beg-marker end-marker buffer msg)))))
+                             `(test-case-beg-marker
+                               ,beg-marker
+                               test-case-end-marker
+                               ,end-marker))
+        (test-case-insert-failure-overlay beg-marker end-marker buffer
+                                          props)))))
 
 (defun test-case-result-supplement-markers (pos)
   (let* ((end (next-single-property-change pos 'test-case-failure))
          (beg (previous-single-property-change end 'test-case-failure)))
     (test-case-result-add-markers beg end t
-                                  (get-text-property pos 'test-case-file)
-                                  (get-text-property pos 'test-case-line)
-                                  (get-text-property pos 'test-case-column)
-                                  (get-text-property pos 'test-case-message))))
+                                  (get-text-property pos 'test-case-props))))
 
-(defun test-case-propertize-message (file line col link msg)
-  (and file
-       (match-beginning file)
-       (add-text-properties (match-beginning file) (match-end file)
-                            '(face test-case-result-file)))
-  (and line
-       (match-beginning line)
-       (add-text-properties (match-beginning line) (match-end line)
-                            '(face test-case-result-line)))
-  (and col
-       (match-beginning col)
-       (add-text-properties (match-beginning col) (match-end col)
-                            '(face test-case-result-column)))
-  (and link
-       (match-beginning link)
-       (add-text-properties (match-beginning link) (match-end link)
-                            '(mouse-face highlight
-                              follow-link t)))
-  (and msg
-       (match-beginning msg)
-       (add-text-properties (match-beginning msg) (match-end msg)
-                            '(face test-case-result-message
-                                   mouse-face highlight
-                                   follow-link t)))
+(defun test-case-propertize-message
+  (file-name locate-func &optional file line col link msg test)
 
-  (let ((file (match-string-no-properties file))
-        (line (string-to-number (match-string-no-properties line)))
-        (col (when col (string-to-number (match-string-no-properties col))))
-        (msg (when msg (match-string-no-properties msg))))
-    (add-text-properties (match-beginning 0) (match-end 0)
-                         `(test-case-failure ,(current-time) ;; unique
-                           test-case-file ,file
-                           test-case-line ,line
-                           test-case-column ,col
-                           test-case-message ,msg))
-    (test-case-result-add-markers (match-beginning 0) (match-end 0) nil
-                                  file line col msg)))
+  (test-case--add-text-properties-for-match file '(face test-case-result-file))
+  (test-case--add-text-properties-for-match line '(face test-case-result-line))
+  (test-case--add-text-properties-for-match col '(face test-case-result-column))
+  (let* ((clickable-p (or locate-func line))
+         (link-props (when clickable-p '(mouse-face highlight follow-link t))))
+    (test-case--add-text-properties-for-match link link-props)
+    (test-case--add-text-properties-for-match
+     msg (append link-props '(face test-case-result-message))))
 
-(defun test-case-propertize-keywords (keyword)
-  (while (re-search-forward (car keyword) end t)
-    (apply 'test-case-propertize-message (cdr keyword))))
+  (let ((props (list :failure (current-time)
+                     :file (or (when file (match-string-no-properties file))
+                               file-name)
+                     :line (when line (string-to-number (match-string line)))
+                     :column (when col (string-to-number (match-string col)))
+                     :message (when msg (match-string-no-properties msg))
+                     :test (when test (match-string-no-properties test))
+                     :locate-func locate-func)))
+    (test-case--add-text-properties-for-match 0 `(test-case-props ,props))
+    (test-case-result-add-markers (match-beginning 0) (match-end 0) nil props)))
 
-(defun test-case-parse-result (result-buffer keywords &optional beg end)
-  (with-current-buffer result-buffer
-    (save-excursion
-      (let ((inhibit-read-only t))
-        (unless beg (setq beg (point-min)))
-        (unless end (setq end (point-max)))
-        (goto-char beg)
-        (add-text-properties beg end 'test-case-file)
-        (mapc 'test-case-propertize-keywords keywords)))))
+(defun test-case--add-text-properties-for-match (match props)
+  (and match
+       (match-beginning match)
+       (add-text-properties (match-beginning match) (match-end match) props)))
 
 (defun test-case-follow-link (pos)
   "Follow the link at POS in an error buffer."
@@ -1133,16 +1157,25 @@ Customize `next-error-highlight' to modify the highlighting."
             (test-case-follow-link beg)))))))
 
 
-;;; back-end utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; back-end utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun test-case-grep (regexp)
+  (when (test-case--search regexp)
+    ;; Always return something, even if nothing was matched by the group.
+    (or (match-string-no-properties 1) "")))
+
+(defun test-case-locate (regexp &optional group)
+  "Search for REGEXP in the buffer and return match beginning and end."
+  (unless group (setq group 0))
+  (when (test-case--search regexp)
+    (cons (match-beginning group) (match-end group))))
+
+(defun test-case--search (regexp)
   (save-restriction
     (widen)
     (save-excursion
       (goto-char (point-min))
-      (when (re-search-forward regexp nil t)
-        ;; Always return something, even if nothing was matched by the group.
-        (or (match-string-no-properties 1) "")))))
+      (re-search-forward regexp nil t))))
 
 (defun test-case-c++-inherits (class &optional namespace)
   "Test if a class in the current buffer inherits from CLASS in NAMESPACE.
@@ -1245,7 +1278,7 @@ configured correctly.  The classpath is determined by
                       (test-case-grep test-case-junit-extends-regexp))))
     ('command (test-case-junit-command))
     ('directory (test-case-junit-directory))
-    ('failure-patterns (list (test-case-junit-failure-pattern)))
+    ('failure-pattern (test-case-junit-failure-pattern))
     ('font-lock-keywords test-case-junit-font-lock-keywords)))
 
 
@@ -1333,7 +1366,7 @@ configured correctly.  The classpath is determined by
                      t))
     ('command (test-case-simplespec-command))
     ('directory (test-case-simplespec-directory))
-    ('failure-patterns (list (test-case-simplespec-failure-pattern)))
+    ('failure-pattern (test-case-simplespec-failure-pattern))
     ('font-lock-keywords test-case-simplespec-font-lock-keywords)))
 
 
@@ -1377,6 +1410,7 @@ configured correctly.  The classpath is determined by
 (defconst test-case-clojuretest-failure-pattern
   '("FAIL in ([^)]+) (\\([^:]+\\):\\([0-9]+\\))[\0-\377[:nonascii:]]*?\\(\\s-*expected: .*\n\\s-*actual: .*\\)" 1 2 nil 0 3))
 
+;; FIXME add these back in
 (defun test-case-clojuretest-error-pattern ()
   (let ((file (regexp-quote (file-name-nondirectory buffer-file-name))))
     (list (format "ERROR in .*\n.*\n\\(\\s-*expected: .*\n\\s-*actual: .*\\)[\0-\377[:nonascii:]]*?\n\s-*at[\0-\377[:nonascii:]]*?%s.*(\\(%s\\):\\([0-9]+\\))[\0-\377[:nonascii:]]*?\n\n" (regexp-quote (test-case-clojuretest-namespace)) file)
@@ -1397,9 +1431,7 @@ configured correctly.  The classpath is determined by
                      t))
     ('command (test-case-clojuretest-command))
     ('directory (test-case-clojuretest-directory))
-    ('failure-patterns (list test-case-clojuretest-failure-pattern
-                             (test-case-clojuretest-compilation-error-pattern)
-                             (test-case-clojuretest-error-pattern)))
+    ('failure-pattern test-case-clojuretest-failure-pattern)
     ('font-lock-keywords test-case-clojuretest-font-lock-keywords)))
 
 
@@ -1449,7 +1481,7 @@ configured correctly.  The classpath is determined by
                       (test-case-phpunit-find-test-class)
                       (test-case-localname buffer-file-name)))
     ('save t)
-    ('failure-patterns (list test-case-phpunit-failure-pattern))
+    ('failure-patterns test-case-phpunit-failure-pattern)
     ('font-lock-keywords test-case-phpunit-font-lock-keywords)))
 
 
@@ -1490,14 +1522,12 @@ configured correctly.  The classpath is determined by
     ('supported (and (derived-mode-p 'ruby-mode)
                      (test-case-grep "require\s+['\"]test/unit['\"]")))
     ('command (concat test-case-ruby-executable " "
-                      test-case-ruby-arguments " "
-                      (test-case-localname buffer-file-name)))
+                      test-case-ruby-arguments " " buffer-file-name))
     ('save t)
-    ('failure-patterns (list test-case-ruby-failure-pattern))
+    ('failure-pattern test-case-ruby-failure-pattern)
     ('font-lock-keywords test-case-ruby-font-lock-keywords)))
 
-
-;; pyunit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; pyunit ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom test-case-python-executable (executable-find "python")
   "The Python executable used to run Python tests."
@@ -1549,7 +1579,7 @@ configured correctly.  The classpath is determined by
     ('command (concat test-case-python-executable " "
                       (test-case-localname buffer-file-name)))
     ('save t)
-    ('failure-patterns (list (test-case-python-failure-pattern)))
+    ('failure-pattern (test-case-python-failure-pattern))
     ('font-lock-keywords test-case-python-font-lock-keywords)))
 
 
@@ -1609,7 +1639,7 @@ customize `test-case-cxxtest-executable-name-func'"
     ('name "CxxTest")
     ('supported (test-case-cxxtest-p))
     ('command (test-case-cxxtest-command))
-    ('failure-patterns (list (test-case-cxxtest-failure-pattern)))
+    ('failure-pattern (test-case-cxxtest-failure-pattern))
     ('font-lock-keywords test-case-cxxtest-font-lock-keywords)))
 
 
@@ -1667,9 +1697,110 @@ customize `test-case-cppunit-executable-name-func'"
     ('name "CppUnit")
     ('supported (test-case-cppunit-p))
     ('command (test-case-cppunit-command))
-    ('failure-patterns (list (test-case-cppunit-failure-pattern)))
+    ('failure-pattern (test-case-cppunit-failure-pattern))
     ('font-lock-keywords test-case-cppunit-font-lock-keywords)))
 
-(provide 'test-case-mode)
+
+;; google-test ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defcustom test-case-gtest-executable-name-func 'file-name-sans-extension
+  "A function that returns the executable name for a google-test test."
+  :group 'test-case
+  :type 'function)
+
+(defun test-case-gtest-p ()
+  "Test if the current buffer is a CppUnit test."
+  (and (derived-mode-p 'c++-mode)
+       (test-case-grep "#include\s+\\([<\"]\\)gtest[/\\]gtest.h[>\"]")
+       (test-case-grep "TEST[ \t]*(")))
+
+(defun test-case-gtest-command ()
+  (let ((executable (funcall test-case-cppunit-executable-name-func
+                             buffer-file-name)))
+    (unless (file-exists-p executable)
+      (error "Executable %s not found" executable))
+    (when (file-newer-than-file-p buffer-file-name executable)
+      (error "Test case executable %s out of date" executable))
+    executable))
+
+(defvar test-case-gtest-font-lock-keywords
+  (eval-when-compile
+    `((,(concat
+         "\\_<\\(ASSERT\\|EXPECT\\)_"
+         (regexp-opt '("TRUE" "FALSE" "EQ" "NE" "LT" "LE" "GT" "GE" "STREQ"
+                       "STRNE" "STRCASEEQ" "STRCASENE" "THROW" "ANY_THROW"
+                       "NO_THROW" "FLOAT_EQ" "DOUBLE_EQ" "NEAR"
+                       "HRESULT_SUCCEEDED" "HRESULT_FAILED"))
+         "\\_>")
+       (0 'test-case-assertion prepend))
+      (,(regexp-opt '("SUCCEED" "FAIL" "ADD_FAILURE") 'symbols)
+       (0 'test-case-assertion prepend)))))
+
+(defvar test-case-gtest-message-lines
+  (eval-when-compile (regexp-opt '("Value of" "Actual" "Expected"))))
+
+(defun test-case-gtest-failure-pattern ()
+  (let ((file (regexp-quote (file-name-nondirectory (buffer-file-name)))))
+    (list (concat "\\(\\(" file "\\):\\([0-9]+\\)\\)[^\n]*\n"
+                  "\\(\\(?:[ \t]*" test-case-gtest-message-lines
+                  "[^\n]*\n?\\)*\\)\n")
+          2 3 nil 1 4)))
+
+(defun test-case-gtest-backend (command)
+  "google-test back-end for `test-case-mode'.
+Since these tests can't be dynamically loaded, each test has to be
+compiled into its own executable.  The executable should have the same
+name as the test, but without the extension.  If it doesn't, customize
+`test-case-gtest-executable-name-func'"
+  (case command
+    ('name "gtest")
+    ('supported (test-case-gtest-p))
+    ('command (test-case-gtest-command))
+    ('failure-pattern (test-case-gtest-failure-pattern))
+    ('font-lock-keywords test-case-gtest-font-lock-keywords)))
+
+
+;; ERT ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom test-case-erc-emacs-executable (car command-line-args)
+  "The Emacs executable used to run ERT tests."
+  :group 'test-case
+  :type 'file)
+
+(defun test-case-ert-p ()
+  (and (derived-mode-p 'emacs-lisp-mode)
+       (test-case-grep "([ \t]*ert-deftest")
+       (not (test-case-grep ";;; ert.el --- Emacs Lisp Regression Testing"))))
+
+(defun test-case-ert-command ()
+  (format "%s -batch -l ert.el -L %s -l %s -f ert-run-tests-batch-and-exit"
+          test-case-erc-emacs-executable
+          (file-name-directory buffer-file-name)
+          buffer-file-name))
+
+(defvar test-case-ert-font-lock-keywords
+  '(("(\\(\\_<should\\_>\\)" (1 'test-case-assertion prepend))))
+
+(defvar test-case-ert-failure-pattern
+  '("Test \\(.*\\) condition:\n\\(?:    .*\n\\)*"
+    nil nil nil nil 0 1))
+
+(defun test-case-ert-search-test (name)
+  ;; Search the last match, because that's how ERT handles re-definitions.
+  (test-case-locate (concat "([\t ]*ert-deftest[\t ]*\\("
+                            (regexp-quote name)
+                            "\\)[\t ]*(")
+                    1))
+
+(defun test-case-ert-backend (command)
+  (case command
+    ('name "ERT")
+    ('supported (test-case-ert-p))
+    ('command (test-case-ert-command))
+    ('save t)
+    ('failure-pattern test-case-ert-failure-pattern)
+    ('failure-locate-func 'test-case-ert-search-test)
+    ('font-lock-keywords test-case-ert-font-lock-keywords)))
+
+(provide 'test-case-mode)
 ;;; test-case-mode.el ends here
