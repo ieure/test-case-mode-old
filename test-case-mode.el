@@ -1316,7 +1316,7 @@ configured correctly.  The classpath is determined by
   "import\\s +com.\\(codahale\\|simple\\).simplespec")
 
 (defvar test-case-simplespec-extends-regexp
-  "extends\\s +\\w*Spec")
+  "extends\\s +\\w*Spec\\w*")
 
 (defun test-case-simplespec-backend (command)
   "Simplespec back-end for `test-case-mode'."
