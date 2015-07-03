@@ -1235,6 +1235,7 @@ configured correctly.  The classpath is determined by
 `test-case-junit-classpath-func' and guessed by default."
   (case command
     ('name "JUnit")
+    ('save t)
     ('supported (and (derived-mode-p 'java-mode)
                      (or (test-case-grep test-case-junit-test-regexp)
                       (test-case-grep test-case-junit-import-regexp)
