@@ -1324,8 +1324,9 @@ configured correctly.  The classpath is determined by
     ('name "Simplespec")
     ('save t)
     ('supported (and (derived-mode-p 'scala-mode)
-                     (test-case-grep test-case-simplespec-import-regexp)
-                     (test-case-grep test-case-simplespec-extends-regexp)
+                     (or
+                      (test-case-grep test-case-simplespec-import-regexp)
+                      (test-case-grep test-case-simplespec-extends-regexp))
                      t))
     ('command (test-case-simplespec-command))
     ('directory (test-case-simplespec-directory))
