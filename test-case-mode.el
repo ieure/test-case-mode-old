@@ -1,6 +1,6 @@
 ;;; test-case-mode.el --- unit test front-end
 ;;
-;; Copyright (C) 2009-2014 Ian Eure
+;; Copyright (C) 2009-2015 Ian Eure
 ;; Copyright (C) 2009 Nikolaj Schumacher
 ;;
 ;; Author: Nikolaj Schumacher <bugs * nschum de>
@@ -1218,10 +1218,15 @@ CLASS and NAMESPACE need to be `regexp-quote'd."
       5 6 nil 4 2)))
 
 (defvar test-case-junit-import-regexp
-  "import\\s +junit\\.framework\\.\\(TestCase\\|TestSuite\\|\\*\\)")
+  "import\\s +\\(static\\s +\\)?\\(org\.\\)?junit)"
+  "Matches any import from the junit or org.junit packages.")
 
 (defvar test-case-junit-extends-regexp
-  "extends\\s +\\(TestCase\\|TestSuite\\)")
+      "extends\\s +\\(TestCase\\|TestSuite\\)")
+
+(defvar test-case-junit-test-regexp
+  "@\\(org.junit.\\)?Test"
+  "Matches a @Test or @org.junit.Test annotation.")
 
 (defun test-case-junit-backend (command)
   "JUnit back-end for `test-case-mode'.
@@ -1231,8 +1236,9 @@ configured correctly.  The classpath is determined by
   (case command
     ('name "JUnit")
     ('supported (and (derived-mode-p 'java-mode)
-                     (test-case-grep test-case-junit-import-regexp)
-                     (test-case-grep test-case-junit-extends-regexp)))
+                     (or (test-case-grep test-case-junit-test-regexp)
+                      (test-case-grep test-case-junit-import-regexp)
+                      (test-case-grep test-case-junit-extends-regexp))))
     ('command (test-case-junit-command))
     ('directory (test-case-junit-directory))
     ('failure-patterns (list (test-case-junit-failure-pattern)))
