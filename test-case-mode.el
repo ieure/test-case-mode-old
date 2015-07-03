@@ -1190,7 +1190,7 @@ CLASS and NAMESPACE need to be `regexp-quote'd."
     repo))
 
 (defun test-case-junit-command ()
-  (format "%s %s test -Dtest=%s"
+  (format "%s %s test -Dtest=%s -DfailIfNoTests=false"
           test-case-junit-mvn-executable test-case-junit-mvn-arguments
           (test-case-junit-class)))
 
