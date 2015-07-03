@@ -1184,7 +1184,10 @@ CLASS and NAMESPACE need to be `regexp-quote'd."
       class)))
 
 (defun test-case-junit-directory ()
-  (locate-dominating-file (buffer-file-name) "pom.xml"))
+  (let ((repo (locate-dominating-file (buffer-file-name) ".git")))
+    (if (not (file-exists-p (concat repo "pom.xml")))
+        (locate-dominating-file (buffer-file-name) "pom.xml"))
+    repo))
 
 (defun test-case-junit-command ()
   (format "%s %s test -Dtest=%s"
