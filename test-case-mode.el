@@ -1575,7 +1575,8 @@ configured correctly.  The classpath is determined by
     ('name "PyUnit")
     ('supported (and (derived-mode-p 'python-mode)
                      (or (test-case-grep "\\_<import\s+unittest\\_>")
-                         (test-case-grep "\\_<import\s+nose\\_>"))))
+                         (test-case-grep "\\_<import\s+nose\\_>")
+                         (test-case-grep "\\_<from\s+nose\\_>"))))
     ('command (concat test-case-python-executable " "
                       (test-case-localname buffer-file-name)))
     ('save t)
